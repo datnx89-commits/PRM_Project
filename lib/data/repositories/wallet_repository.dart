@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show SetOptions;
 import '../../core/config/app_config.dart';
 import '../../core/constants/app_constants.dart';
 import '../models/wallet_model.dart';
@@ -13,7 +14,10 @@ class WalletRepository {
   Future<WalletModel> getOrCreateWallet(String userId) async {
     final doc = await _firebase.walletsCollection.doc(userId).get();
     if (doc.exists && doc.data() != null) {
-      return WalletModel.fromMap(doc.data()!, doc.id);
+      final wallet = WalletModel.fromMap(doc.data()!, doc.id);
+      // Đồng bộ số dư sang hồ sơ user (Drawer, Quản lý người dùng đọc users.walletBalance)
+      await _syncUserBalance(userId, wallet.balance);
+      return wallet;
     }
 
     final newWallet = WalletModel(
@@ -25,6 +29,15 @@ class WalletRepository {
     );
     await _firebase.walletsCollection.doc(userId).set(newWallet.toMap());
     return newWallet;
+  }
+
+  /// Ghi số dư ví vào users/{userId}.walletBalance (nguồn hiển thị ở Drawer & Admin)
+  Future<void> _syncUserBalance(String userId, double balance) async {
+    try {
+      await _firebase.usersCollection
+          .doc(userId)
+          .set({'walletBalance': balance}, SetOptions(merge: true));
+    } catch (_) {}
   }
 
   /// Lấy lịch sử biến động số dư của người dùng (mới nhất trước)
@@ -70,6 +83,12 @@ class WalletRepository {
       'balance': newBalance,
       'updatedAt': now.toIso8601String(),
     });
+    // Ghi cùng batch: số dư hiển thị ở hồ sơ user luôn khớp với ví
+    batch.set(
+      _firebase.usersCollection.doc(wallet.userId),
+      {'walletBalance': newBalance},
+      SetOptions(merge: true),
+    );
 
     await batch.commit();
   }
