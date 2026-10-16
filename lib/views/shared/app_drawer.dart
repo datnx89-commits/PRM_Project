@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_constants.dart';
+import '../../data/providers.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../admin/admin_reports_screen.dart';
 import '../admin/promotion_management_screen.dart';
@@ -82,16 +83,29 @@ class AppDrawer extends ConsumerWidget {
               children: [
                 Text('${user?.email ?? ''} (${user?.role ?? ''})'),
                 if (user != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Ví: ${currencyFormat.format(user.walletBalance)} | Điểm: ${user.points}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.amber.shade200,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                  // Nghe realtime hồ sơ user: số dư ví & điểm luôn mới nhất
+                  StreamBuilder(
+                    stream: ref
+                        .read(firebaseServiceProvider)
+                        .usersCollection
+                        .doc(user.id)
+                        .snapshots(),
+                    builder: (context, snap) {
+                      final data = snap.data?.data();
+                      final balance = (data?['walletBalance'] as num?)?.toDouble() ?? user.walletBalance;
+                      final points = (data?['points'] as num?)?.toInt() ?? user.points;
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Ví: ${currencyFormat.format(balance)} | Điểm: $points',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.amber.shade200,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    },
                   ),
               ],
             ),
