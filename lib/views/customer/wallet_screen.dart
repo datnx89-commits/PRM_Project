@@ -63,7 +63,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> with SingleTickerPr
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (_, setModalState) {
             final entered = double.tryParse(amountController.text) ?? 0.0;
             final bonus = appConfig.getDepositBonus(entered);
 
@@ -141,7 +141,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> with SingleTickerPr
                     final user = ref.read(authViewModelProvider).user;
                     if (user != null) {
                       final (ok, msg) = await ref.read(walletRepositoryProvider).deposit(user.id, amt);
-                      if (context.mounted) {
+                      // Hộp thoại đã đóng nên kiểm tra mounted của màn Ví, không phải của hộp thoại
+                      if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
                         _loadData();
                       }
