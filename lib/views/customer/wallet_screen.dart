@@ -74,7 +74,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> with SingleTickerPr
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Nhập số tiền muốn nạp (tối thiểu 10.000đ):'),
+                    Text('Nhập số tiền muốn nạp (tối thiểu ${Formatters.currency(appConfig.minDepositAmount)}):'),
                     const SizedBox(height: 8),
                     TextField(
                       controller: amountController,
@@ -131,9 +131,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen> with SingleTickerPr
                 ElevatedButton(
                   onPressed: () async {
                     final amt = double.tryParse(amountController.text) ?? 0.0;
-                    if (amt < 10000) {
+                    if (amt < appConfig.minDepositAmount) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Số tiền nạp tối thiểu là 10.000đ')),
+                        SnackBar(content: Text('Số tiền nạp tối thiểu là ${Formatters.currency(appConfig.minDepositAmount)}')),
                       );
                       return;
                     }
