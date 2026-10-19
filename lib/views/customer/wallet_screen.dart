@@ -41,17 +41,27 @@ class _WalletScreenState extends ConsumerState<WalletScreen> with SingleTickerPr
     final walletRepo = ref.read(walletRepositoryProvider);
     final pointRepo = ref.read(pointRepositoryProvider);
 
-    final w = await walletRepo.getOrCreateWallet(user.id);
-    final wTxs = await walletRepo.getTransactions(user.id);
-    final pTxs = await pointRepo.getHistory(user.id);
+    try {
+      final w = await walletRepo.getOrCreateWallet(user.id);
+      final wTxs = await walletRepo.getTransactions(user.id);
+      final pTxs = await pointRepo.getHistory(user.id);
 
-    if (mounted) {
-      setState(() {
-        _wallet = w;
-        _walletTransactions = wTxs;
-        _pointTransactions = pTxs;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _wallet = w;
+          _walletTransactions = wTxs;
+          _pointTransactions = pTxs;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      // Không để màn hình quay vòng mãi khi mất mạng hoặc lỗi quyền truy cập
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không tải được dữ liệu ví: $e')),
+        );
+      }
     }
   }
 
