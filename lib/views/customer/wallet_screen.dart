@@ -357,7 +357,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> with SingleTickerPr
                                         const Icon(Icons.military_tech, color: Colors.amber, size: 28),
                                         const SizedBox(width: 8),
                                         Text(
-                                          'Hạng: ${user?.membershipTier.name ?? "Thường"}',
+                                          'Hạng: ${user?.membershipTier.name ?? "Đồng"}',
                                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                                         ),
                                       ],

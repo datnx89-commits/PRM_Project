@@ -91,7 +91,7 @@ class AppConfig {
     MembershipTier(name: 'Kim cương', minLifetimePoints: 5000, discountPercent: 10),
     MembershipTier(name: 'Vàng', minLifetimePoints: 2000, discountPercent: 5),
     MembershipTier(name: 'Bạc', minLifetimePoints: 500, discountPercent: 3),
-    MembershipTier(name: 'Thường', minLifetimePoints: 0, discountPercent: 0),
+    MembershipTier(name: 'Đồng', minLifetimePoints: 0, discountPercent: 0),
   ];
 
   static MembershipTier getMembershipTier(int lifetimePoints) {
