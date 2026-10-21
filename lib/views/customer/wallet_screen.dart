@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/config/app_config.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/point_transaction_model.dart';
 import '../../data/models/wallet_model.dart';
@@ -382,6 +383,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> with SingleTickerPr
                                     Text('Điểm trọn đời: ${user?.lifetimePoints ?? 0} điểm', style: const TextStyle(color: Colors.grey)),
                                   ],
                                 ),
+                                const SizedBox(height: 12),
+                                MembershipTierTable(lifetimePoints: user?.lifetimePoints ?? 0),
                               ],
                             ),
                           ),
@@ -536,6 +539,68 @@ class _WalletScreenState extends ConsumerState<WalletScreen> with SingleTickerPr
                 ),
               ],
             ),
+    );
+  }
+}
+/// Bảng hạng thành viên (Đồng → Kim cương) kèm số điểm còn thiếu để lên hạng kế tiếp
+class MembershipTierTable extends StatelessWidget {
+  final int lifetimePoints;
+
+  const MembershipTierTable({super.key, required this.lifetimePoints});
+
+  @override
+  Widget build(BuildContext context) {
+    final current = AppConfig.getMembershipTier(lifetimePoints);
+    final next = AppConfig.getNextMembershipTier(lifetimePoints);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          next != null
+              ? 'Còn ${next.minLifetimePoints - lifetimePoints} điểm để lên hạng ${next.name}'
+              : 'Bạn đang ở hạng cao nhất',
+          style: TextStyle(color: Colors.teal.shade700, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 4),
+        ...AppConfig.membershipTiers.reversed.map((tier) {
+          final isCurrent = tier.name == current.name;
+          final discount = tier.discountPercent > 0 ? 'Giảm ${tier.discountPercent}%' : 'Không giảm';
+          return Container(
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isCurrent ? Colors.amber.shade100 : Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isCurrent ? Icons.check_circle : Icons.military_tech_outlined,
+                  size: 18,
+                  color: isCurrent ? Colors.amber.shade900 : Colors.grey,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tier.name,
+                        style: TextStyle(fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal),
+                      ),
+                      Text(
+                        'Từ ${tier.minLifetimePoints} điểm • $discount',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 }

@@ -101,6 +101,15 @@ class AppConfig {
     return membershipTiers.last;
   }
 
+  /// Hạng kế tiếp theo điểm trọn đời (null nếu đã ở hạng cao nhất)
+  static MembershipTier? getNextMembershipTier(int lifetimePoints) {
+    MembershipTier? next;
+    for (var tier in membershipTiers) {
+      if (tier.minLifetimePoints > lifetimePoints) next = tier;
+    }
+    return next;
+  }
+
   // User session
   String? get userId => _prefs.getString(_keyUserId);
   String? get userEmail => _prefs.getString(_keyUserEmail);
