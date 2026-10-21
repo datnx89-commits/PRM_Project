@@ -93,6 +93,32 @@ class BookingProcessState {
     return (subtotal - discount).clamp(0.0, double.infinity);
   }
 
+  /// Kiểm tra có ít nhất 1 khung giờ hợp lệ được chọn
+  bool get hasValidSelection => selectedSlots.isNotEmpty;
+
+  /// Tổng số giờ đá đã chọn (dựa trên startTime & endTime của từng slot)
+  double get totalSelectedHours {
+    double total = 0.0;
+    for (var slot in selectedSlots) {
+      final s = _parseTimeToDouble(slot.startTime);
+      final e = _parseTimeToDouble(slot.endTime);
+      if (e > s) {
+        total += (e - s);
+      } else {
+        total += 1.0; // Mặc định 1 giờ nếu dữ liệu khung giờ không chuẩn
+      }
+    }
+    return total;
+  }
+
+  static double _parseTimeToDouble(String time) {
+    final parts = time.split(':');
+    if (parts.length < 2) return 0.0;
+    final h = double.tryParse(parts[0]) ?? 0.0;
+    final m = double.tryParse(parts[1]) ?? 0.0;
+    return h + (m / 60.0);
+  }
+
   BookingProcessState copyWith({
     String? selectedDate,
     List<String>? bookedSlotIds,
@@ -195,8 +221,27 @@ class BookingProcessViewModel extends StateNotifier<BookingProcessState> {
       current.removeWhere((s) => s.id == slot.id);
     } else {
       current.add(slot);
+      // Sắp xếp các slot đã chọn theo thứ tự giờ bắt đầu tăng dần
+      current.sort((a, b) => a.startTime.compareTo(b.startTime));
     }
     state = state.copyWith(selectedSlots: current);
+  }
+
+  /// Chọn tất cả các slot còn trống trong ngày
+  void selectAllAvailableSlots() {
+    final available = state.allSlots.where((s) => !state.bookedSlotIds.contains(s.id)).toList();
+    available.sort((a, b) => a.startTime.compareTo(b.startTime));
+    state = state.copyWith(selectedSlots: available);
+  }
+
+  /// Bỏ chọn tất cả slot
+  void clearSelectedSlots() {
+    state = state.copyWith(selectedSlots: []);
+  }
+
+  /// Kiểm tra xem slot có thể chọn hay không (không bị trùng lịch)
+  bool isSlotSelectable(TimeSlotModel slot) {
+    return !state.bookedSlotIds.contains(slot.id);
   }
 
   Future<void> applyPromo(String code) async {
