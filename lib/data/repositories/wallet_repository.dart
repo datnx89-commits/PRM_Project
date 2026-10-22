@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart' show SetOptions;
 import '../../core/config/app_config.dart';
 import '../../core/constants/app_constants.dart';
+import '../models/app_notification_model.dart';
 import '../models/wallet_model.dart';
 import '../services/firebase_service.dart';
 
@@ -91,6 +92,49 @@ class WalletRepository {
     );
 
     await batch.commit();
+
+    await _notifyBalanceChange(
+      userId: wallet.userId,
+      amount: amount,
+      balanceAfter: newBalance,
+      description: description,
+    );
+  }
+
+  /// Nội dung thông báo biến động số dư, ví dụ: "+200000đ. Số dư: 215000đ. Nạp tiền vào ví"
+  static String balanceChangeMessage({
+    required double amount,
+    required double balanceAfter,
+    String? description,
+  }) {
+    final sign = amount > 0 ? '+' : '';
+    final detail = (description != null && description.trim().isNotEmpty) ? ' ${description.trim()}' : '';
+    return '$sign${amount.toInt()}đ. Số dư: ${balanceAfter.toInt()}đ.$detail';
+  }
+
+  /// Báo biến động số dư cho chủ ví; lỗi gửi thông báo không ảnh hưởng giao dịch đã ghi
+  Future<void> _notifyBalanceChange({
+    required String userId,
+    required double amount,
+    required double balanceAfter,
+    String? description,
+  }) async {
+    try {
+      final docRef = _firebase.notificationsCollection.doc();
+      final notif = AppNotificationModel(
+        id: docRef.id,
+        userId: userId,
+        title: 'Biến động số dư ví',
+        message: balanceChangeMessage(
+          amount: amount,
+          balanceAfter: balanceAfter,
+          description: description,
+        ),
+        url: '/wallet',
+        createdAt: DateTime.now(),
+      );
+      await docRef.set(notif.toMap());
+    } catch (_) {}
   }
 
   /// Nạp tiền vào ví (có khuyến mãi nạp theo bậc: 200k +15k, 500k +50k)
