@@ -12,6 +12,27 @@ import '../data/repositories/pricing_repository.dart';
 import '../data/repositories/promotion_repository.dart';
 import 'auth_viewmodel.dart';
 
+/// Bảng bóc tách chi tiết giá đặt sân
+class BookingPriceBreakdown {
+  final double subtotal;
+  final double promoDiscount;
+  final double tierDiscount;
+  final double totalDiscount;
+  final double finalAmount;
+  final double goldenDayMultiplier;
+  final int estimatedPoints;
+
+  const BookingPriceBreakdown({
+    required this.subtotal,
+    required this.promoDiscount,
+    required this.tierDiscount,
+    required this.totalDiscount,
+    required this.finalAmount,
+    this.goldenDayMultiplier = 1.0,
+    this.estimatedPoints = 0,
+  });
+}
+
 class BookingProcessState {
   final String selectedDate;
   final List<String> bookedSlotIds;
@@ -91,6 +112,29 @@ class BookingProcessState {
     final subtotal = calculateSubtotal(field);
     final discount = calculateTotalDiscount(field, user);
     return (subtotal - discount).clamp(0.0, double.infinity);
+  }
+
+  /// Bóc tách toàn bộ bảng tính giá phục vụ hiển thị hóa đơn và xác nhận đặt sân
+  BookingPriceBreakdown getBreakdown(FieldModel field, UserModel? user) {
+    final sub = calculateSubtotal(field);
+    final pDisc = calculatePromoDiscount(field);
+    final tDisc = calculateTierDiscount(field, user);
+    final totDisc = calculateTotalDiscount(field, user);
+    final finalAmt = calculateTotal(field, user);
+    final mult = goldenDay?.priceMultiplier ?? 1.0;
+    final basePts = (finalAmt / 10000).floor();
+    final pointsMult = goldenDay?.pointsMultiplier ?? 1.0;
+    final estPts = (basePts * pointsMult).round();
+
+    return BookingPriceBreakdown(
+      subtotal: sub,
+      promoDiscount: pDisc,
+      tierDiscount: tDisc,
+      totalDiscount: totDisc,
+      finalAmount: finalAmt,
+      goldenDayMultiplier: mult,
+      estimatedPoints: estPts,
+    );
   }
 
   /// Kiểm tra có ít nhất 1 khung giờ hợp lệ được chọn
