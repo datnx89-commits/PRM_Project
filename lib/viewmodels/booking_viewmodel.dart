@@ -137,6 +137,19 @@ class BookingProcessState {
     );
   }
 
+  /// Kiểm tra khung giờ đã qua so với giờ hiện tại (khi chọn ngày hôm nay)
+  bool isSlotPast(TimeSlotModel slot, [DateTime? referenceTime]) {
+    final now = referenceTime ?? DateTime.now();
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    if (selectedDate != todayStr) return false;
+    final parts = slot.startTime.split(':');
+    if (parts.length < 2) return false;
+    final slotHour = int.tryParse(parts[0]) ?? 0;
+    final slotMin = int.tryParse(parts[1]) ?? 0;
+    final slotDateTime = DateTime(now.year, now.month, now.day, slotHour, slotMin);
+    return slotDateTime.isBefore(now);
+  }
+
   /// Kiểm tra có ít nhất 1 khung giờ hợp lệ được chọn
   bool get hasValidSelection => selectedSlots.isNotEmpty;
 
@@ -258,6 +271,7 @@ class BookingProcessViewModel extends StateNotifier<BookingProcessState> {
 
   void toggleSlot(TimeSlotModel slot) {
     if (state.bookedSlotIds.contains(slot.id)) return;
+    if (state.isSlotPast(slot)) return;
 
     final current = List<TimeSlotModel>.from(state.selectedSlots);
     final exists = current.any((s) => s.id == slot.id);
