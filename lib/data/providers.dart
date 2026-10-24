@@ -75,6 +75,11 @@ final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   return NotificationRepository(firebaseService);
 });
 
+/// Kiểm tra lịch đá sắp tới và tạo thông báo nhắc giờ cho người dùng
+final matchReminderProvider = FutureProvider.autoDispose.family<void, String>((ref, userId) {
+  return ref.watch(notificationRepositoryProvider).createMatchReminders(userId);
+});
+
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   final firebaseService = ref.watch(firebaseServiceProvider);
   return ChatRepository(firebaseService);

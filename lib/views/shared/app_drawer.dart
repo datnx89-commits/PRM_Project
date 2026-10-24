@@ -27,6 +27,9 @@ class AppDrawer extends ConsumerWidget {
     final user = authState.user;
     final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
+    // Mở Drawer (lối vào Hộp thư) là kiểm tra lịch đá để có nhắc giờ mới nhất
+    if (user != null) ref.watch(matchReminderProvider(user.id));
+
     final isOwnerOrStaff = user != null &&
         (user.role == UserRole.owner ||
             user.role == UserRole.staff ||
