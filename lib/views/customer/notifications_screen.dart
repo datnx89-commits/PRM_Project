@@ -46,6 +46,10 @@ class NotificationsScreen extends ConsumerWidget {
       body: StreamBuilder<List<AppNotificationModel>>(
         stream: notifRepo.getNotificationsStream(user.id),
         builder: (context, snapshot) {
+          // Lỗi tải không được hiển thị thành "chưa có thông báo"
+          if (snapshot.hasError) {
+            return Center(child: Text('Không tải được thông báo: ${snapshot.error}'));
+          }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
