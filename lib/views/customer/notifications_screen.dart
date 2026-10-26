@@ -11,6 +11,17 @@ import '../shared/app_drawer.dart';
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
+  IconData _iconFor(AppNotificationModel notif) {
+    switch (notif.url) {
+      case '/wallet':
+        return Icons.account_balance_wallet;
+      case '/my-bookings':
+        return Icons.event_available;
+      default:
+        return Icons.notifications;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authViewModelProvider).user;
@@ -68,7 +79,7 @@ class NotificationsScreen extends ConsumerWidget {
                 leading: CircleAvatar(
                   backgroundColor: notif.isRead ? Colors.grey.shade200 : Colors.blue.shade100,
                   child: Icon(
-                    Icons.notifications,
+                    _iconFor(notif),
                     color: notif.isRead ? Colors.grey : Colors.blue.shade800,
                   ),
                 ),
