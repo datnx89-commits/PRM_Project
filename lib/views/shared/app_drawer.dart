@@ -163,6 +163,14 @@ class AppDrawer extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.notifications, color: Colors.amber),
               title: const Text('Hộp thư thông báo'),
+              trailing: StreamBuilder<int>(
+                stream: ref.read(notificationRepositoryProvider).getUnreadCountStream(user.id),
+                builder: (context, snap) {
+                  final count = snap.data ?? 0;
+                  if (count == 0) return const SizedBox.shrink();
+                  return Badge(label: Text(count > 99 ? '99+' : '$count'));
+                },
+              ),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
