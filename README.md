@@ -193,9 +193,29 @@ flutter run
 
 ---
 
-## 4. Hướng dẫn khởi tạo tài khoản & Dữ liệu mẫu ban đầu
+## 4. Khởi tạo Dữ liệu mẫu (Seed Data) & Quản lý tài khoản
 
-Hệ thống phân chia 3 vai trò: **Customer**, **Staff** (chủ sân) và **Admin** (quản trị viên).
+Dự án đã tích hợp sẵn công cụ **Seed Data tự động** (`lib/seed_main.dart`) để khởi tạo toàn bộ dữ liệu mẫu:
+- **4 tài khoản mẫu**: Admin (`admin@sfb.com`), Staff (`staff@sfb.com`), Customer (`customer@sfb.com` & `hoa@gmail.com`) với mật khẩu chung `123456`.
+- **4 loại sân**: Bóng đá, Cầu lông, Tennis, Bóng rổ.
+- **4 sân thể thao mẫu** liên kết với tài khoản Staff.
+- **64 khung giờ** (mỗi sân có 16 khung giờ từ 06:00 đến 22:00).
+- **2 mã voucher**: `SUMMER26` (-20%) và `NEWBIE10` (-10%).
+
+---
+
+### Cách 1: Tự động nạp dữ liệu mẫu bằng 1 lệnh (Khuyên dùng)
+Sau khi đã cấu hình xong file `firebase_options_local.dart`, bạn chỉ cần chạy lệnh sau:
+```bash
+flutter run -t lib/seed_main.dart
+```
+Trên màn hình công cụ, nhấn nút **"Bắt đầu nạp dữ liệu mẫu lên Firestore"**. Hệ thống sẽ tự động tạo tài khoản Firebase Auth, gán quyền và nạp toàn bộ collections lên Firestore theo thời gian thực.
+
+Sau khi hoàn tất, bạn chỉ cần tắt và chạy app chính bằng lệnh `flutter run` để đăng nhập test ngay!
+
+---
+
+### Cách 2: Khởi tạo thủ công trên ứng dụng và Firebase Console
 
 ### 4.1. Tạo tài khoản người dùng
 1. Mở ứng dụng, tại màn hình Đăng nhập, bấm **Chưa có tài khoản? Đăng ký ngay**.
