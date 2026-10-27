@@ -23,13 +23,13 @@ Dự án sử dụng cơ chế khởi tạo Firebase qua file cấu hình Dart (
 3. Có thể tắt Google Analytics để khởi tạo nhanh hơn, sau đó bấm **Create project**.
 
 ### Bước 2.2: Kích hoạt Authentication (Đăng nhập Email/Password)
-1. Trong menu bên trái, chọn **Build** > **Authentication** > bấm **Get Started**.
+1. Trong menu bên trái, chọn **Product categories** > **Security** > **Authentication** > bấm **Get Started**.
 2. Tại tab **Sign-in method**, bấm vào **Email/Password**.
 3. Bật công tắc **Enable** ở dòng đầu tiên (Email/Password), sau đó bấm **Save**.
 
 ### Bước 2.3: Kích hoạt Cloud Firestore Database
-1. Trong menu bên trái, chọn **Build** > **Firestore Database** > bấm **Create database**.
-2. Chọn vị trí máy chủ (Location) gần nhất (khuyên dùng `asia-southeast1` hoặc `asia-east1`).
+1. Trong menu bên trái, chọn **Product categories** > **Database & Storage** > **Firestore** > bấm **Create database**.
+2. Chọn vị trí máy chủ (Location) gần nhất (khuyên dùng `asia-southeast1` hoặc `asia-east1`) hoặc để default.
 3. Chọn chế độ bảo mật:
    - **Start in test mode**: Thích hợp để test phát triển trong 30 ngày (cho phép đọc/ghi tự do).
    - Hoặc thiết lập **Rules** an toàn sau khi tạo database (tab **Rules**):
@@ -45,99 +45,128 @@ Dự án sử dụng cơ chế khởi tạo Firebase qua file cấu hình Dart (
      ```
    - Bấm **Publish** để lưu luật.
 
-### Bước 2.4: Đăng ký App trên Firebase và tạo file `firebase_options_local.dart`
+### Bước 2.4: Đăng ký App trên Firebase & Cấu hình chi tiết `firebase_options_local.dart`
 
 > [!IMPORTANT]
-> **Quy tắc bắt buộc về App Config trên Firebase:**
-> - **KHÔNG DÙNG CHUNG CẤU HÌNH** giữa các nền tảng (Android, Web, iOS).
-> - Mặc dù `projectId` và `messagingSenderId` giống nhau, nhưng mỗi nền tảng có một **`appId` riêng biệt** gắn với định danh hệ thống (Package Name trên Android, Bundle ID trên iOS).
-> - Nếu lấy cấu hình của Web điền cho Android, **Firebase Auth và Notification (FCM) sẽ bị lỗi xác thực**.
-> - Do file `firebase_options_local.dart` chứa các mã định danh bảo mật nên đã được đưa vào `.gitignore` (không đẩy lên GitHub). Người clone dự án về máy cần tạo file này để ứng dụng chạy ổn định.
+> **Quy tắc quan trọng về thông số cấu hình:**
+> 1. **`projectId` & `messagingSenderId` là BẮT BUỘC cho Android:**
+>    - `projectId`: Cực kỳ quan trọng để **Cloud Firestore** và **Firebase Auth** kết nối đúng database của bạn. Nếu sai, app sẽ báo lỗi kết nối hoặc không tìm thấy dữ liệu.
+>    - `messagingSenderId` (chính là Project Number): Cực kỳ quan trọng cho tính năng **Notification (FCM)**. Nếu để sai hoặc để mẫu `1234567890`, thiết bị Android **sẽ không bao giờ nhận được thông báo**.
+> 2. **`appId` là BẮT BUỘC RIÊNG BIỆT từng nền tảng:**
+>    - Android có `appId` dạng `1:...:android:...` gắn với Package name.
+>    - Web có `appId` dạng `1:...:web:...`.
+>    - iOS có `appId` dạng `1:...:ios:...`.
+>    - **Tuyệt đối không lấy `appId` của Web điền cho Android**, vì sẽ gây lỗi xác thực hoặc lỗi nhận thông báo.
+> 3. **File `firebase_options_local.dart` đã nằm trong `.gitignore`:** Người clone dự án về máy cần tạo file này theo hướng dẫn bên dưới để ứng dụng có thể build và chạy ổn định.
 
 ---
 
-#### Cách 1: Đăng ký thủ công từng App (Khuyên dùng nếu chỉ chạy 1-2 platform)
+#### Hướng dẫn lấy thông số và điền cấu hình từng bước:
 
-##### 1. Đăng ký App Android (bắt buộc nếu chạy trên máy ảo Android / điện thoại thật):
-- Trong Firebase Console, bấm **Add app** (hoặc biểu tượng **Android**).
-- **Android package name**: Điền chính xác `com.example.sportsbook_36vn` (khớp với file `android/app/build.gradle.kts`).
-- Bấm **Register app**.
-- Tải file `google-services.json` (nếu có) bỏ vào thư mục `android/app/` của dự án.
-- Lấy giá trị `appId` (có dạng `1:xxxx:android:yyyy`) và `apiKey`.
+##### 1. Đăng ký App Android (Bắt buộc nếu bạn chạy máy ảo / điện thoại Android):
+1. Trong Firebase Console, bấm **Add app** (hoặc biểu tượng con robot **Android**).
+2. **Android package name**: Nhập chính xác `com.example.sportsbook_36vn` (khớp với file `android/app/build.gradle.kts`).
+3. Bấm **Register app** > Tải file **`google-services.json`** về.
+4. **Copy file `google-services.json` vừa tải bỏ vào thư mục `android/app/`** của dự án.
+5. Mở file `google-services.json` bằng Notepad / VS Code để lấy các thông số cho khối `android`:
 
-##### 2. Đăng ký App Web (nếu muốn chạy thử trên trình duyệt Chrome):
-- Trong Firebase Console, bấm **Add app** > chọn biểu tượng **Web** `</>`.
-- Đặt tên app: `sportsbook_36vn` > Bấm **Register app**.
-- Firebase hiển thị `firebaseConfig` gồm: `apiKey`, `appId` (có dạng `1:xxxx:web:yyyy`), `authDomain`, `storageBucket`.
+| Tên trường trong file `google-services.json` | Vị trí trong file JSON | Điền vào `FirebaseOptions android` | Ví dụ thực tế |
+|---|---|---|---|
+| **`projectId`** | `"project_info" -> "project_id"` | `projectId: ...` | `sportsbook-36vn-abc12` |
+| **`messagingSenderId`** | `"project_info" -> "project_number"` | `messagingSenderId: ...` | `987654321098` |
+| **`storageBucket`** | `"project_info" -> "storage_bucket"` | `storageBucket: ...` | `sportsbook-36vn-abc12.appspot.com` |
+| **`apiKey`** | `"client[0]" -> "api_key[0]" -> "current_key"` | `apiKey: ...` | `AIzaSyA1b2C3d4...` |
+| **`appId`** | `"client[0]" -> "client_info" -> "mobilesdk_app_id"` | `appId: ...` | `1:987654321098:android:a1b2c3d4...` |
 
-##### 3. Đăng ký App iOS (nếu bạn chạy trên macOS / iPhone):
-- Bấm **Add app** > chọn biểu tượng **iOS**.
-- **Apple bundle ID**: Điền `com.example.sportsbook36vn`.
-- Lấy `appId` (có dạng `1:xxxx:ios:yyyy`).
+*(Hoặc trên Firebase Console: Bấm vào biểu tượng bánh răng ⚙️ **Project settings > General**, bạn sẽ thấy ngay dòng **Project ID** và **Project number** ở ngay đầu trang).*
 
-##### 4. Tạo và điền file `firebase_options_local.dart`:
-- Sao chép từ file mẫu có sẵn trong thư mục dự án:
-  ```bash
-  cp lib/core/config/firebase_options_sample.dart lib/core/config/firebase_options_local.dart
-  ```
-- Mở file `lib/core/config/firebase_options_local.dart`:
-  - Đổi tên class thành `LocalFirebaseOptions`.
-  - Điền đúng các thông số riêng biệt của từng app bạn vừa đăng ký ở trên vào các khối tương ứng:
-  ```dart
-  import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
-  import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
+---
 
-  class LocalFirebaseOptions {
-    static FirebaseOptions get currentPlatform {
-      if (kIsWeb) return web;
-      switch (defaultTargetPlatform) {
-        case TargetPlatform.android: return android;
-        case TargetPlatform.iOS: return ios;
-        default: return android;
-      }
+##### 2. Đăng ký App Web (Nếu bạn muốn chạy thử trên trình duyệt Chrome):
+1. Trong Firebase Console, bấm **Add app** > chọn biểu tượng **Web** `</>`.
+2. Đặt tên app (VD: `sportsbook_36vn`) > Bấm **Register app**.
+3. Firebase sẽ hiển thị đoạn mã `firebaseConfig`. Bạn đối chiếu sang khối `web`:
+   - `apiKey` -> `apiKey: ...`
+   - `appId` -> `appId: 1:...:web:...`
+   - `messagingSenderId` -> `messagingSenderId: ...`
+   - `projectId` -> `projectId: ...`
+   - `authDomain` -> `authDomain: ...`
+   - `storageBucket` -> `storageBucket: ...`
+
+---
+
+##### 3. Đăng ký App iOS (Nếu bạn chạy trên macOS / iPhone):
+1. Bấm **Add app** > chọn biểu tượng **iOS**.
+2. **Apple bundle ID**: Nhập `com.example.sportsbook36vn`.
+3. Tải file `GoogleService-Info.plist` (bỏ vào thư mục `ios/Runner/`).
+4. Lấy `appId` (dạng `1:...:ios:...`) và `apiKey` điền vào khối `ios`.
+
+---
+
+##### 4. Tạo và lưu file `firebase_options_local.dart`:
+1. Mở terminal tại thư mục dự án và chạy lệnh sao chép từ file mẫu:
+   ```bash
+   cp lib/core/config/firebase_options_sample.dart lib/core/config/firebase_options_local.dart
+   ```
+2. Mở file `lib/core/config/firebase_options_local.dart`:
+   - Đổi tên class từ `SampleFirebaseOptions` thành `LocalFirebaseOptions`.
+   - Điền đầy đủ các thông số thật vừa lấy ở các bước trên:
+
+```dart
+import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
+
+class LocalFirebaseOptions {
+  static FirebaseOptions get currentPlatform {
+    if (kIsWeb) return web;
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android: return android;
+      case TargetPlatform.iOS: return ios;
+      default: return android;
     }
-
-    // Cấu hình từ App Web trên Firebase Console
-    static const FirebaseOptions web = FirebaseOptions(
-      apiKey: 'AIzaSy...-WEB',
-      appId: '1:1234567890:web:abcdef',
-      messagingSenderId: '1234567890',
-      projectId: 'sportsbook-36vn',
-      authDomain: 'sportsbook-36vn.firebaseapp.com',
-      storageBucket: 'sportsbook-36vn.appspot.com',
-    );
-
-    // Cấu hình từ App Android (Package: com.example.sportsbook_36vn)
-    static const FirebaseOptions android = FirebaseOptions(
-      apiKey: 'AIzaSy...-ANDROID',
-      appId: '1:1234567890:android:abcdef',
-      messagingSenderId: '1234567890',
-      projectId: 'sportsbook-36vn',
-      storageBucket: 'sportsbook-36vn.appspot.com',
-    );
-
-    // Cấu hình từ App iOS (Bundle ID: com.example.sportsbook36vn)
-    static const FirebaseOptions ios = FirebaseOptions(
-      apiKey: 'AIzaSy...-IOS',
-      appId: '1:1234567890:ios:abcdef',
-      messagingSenderId: '1234567890',
-      projectId: 'sportsbook-36vn',
-      storageBucket: 'sportsbook-36vn.appspot.com',
-      iosBundleId: 'com.example.sportsbook36vn',
-    );
   }
-  ```
 
-*(Ghi chú: Nếu bạn chỉ chạy trên Android, bạn chỉ cần tạo App Android và điền đúng khối `android`, các khối Web/iOS có thể để tạm giá trị mẫu).*
+  // Cấu hình từ App Web trên Firebase Console
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSy...-WEB',
+    appId: '1:987654321098:web:abcdef123456',
+    messagingSenderId: '987654321098',
+    projectId: 'sportsbook-36vn-abc12',
+    authDomain: 'sportsbook-36vn-abc12.firebaseapp.com',
+    storageBucket: 'sportsbook-36vn-abc12.appspot.com',
+  );
+
+  // Cấu hình từ file google-services.json của App Android
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSy...-ANDROID',
+    appId: '1:987654321098:android:abcdef123456',
+    messagingSenderId: '987654321098',
+    projectId: 'sportsbook-36vn-abc12',
+    storageBucket: 'sportsbook-36vn-abc12.appspot.com',
+  );
+
+  // Cấu hình từ App iOS
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSy...-IOS',
+    appId: '1:987654321098:ios:abcdef123456',
+    messagingSenderId: '987654321098',
+    projectId: 'sportsbook-36vn-abc12',
+    storageBucket: 'sportsbook-36vn-abc12.appspot.com',
+    iosBundleId: 'com.example.sportsbook36vn',
+  );
+}
+```
+
+> **Lưu ý tiện lợi:** Nếu bạn chỉ chạy ứng dụng trên máy Android, bạn chỉ cần điền chính xác khối **`android`** (kèm file `android/app/google-services.json`). Khối `web` và `ios` có thể để nguyên giá trị mẫu mà không ảnh hưởng gì đến việc chạy trên Android.
 
 ---
 
-#### Cách 2: Tự động đăng ký toàn bộ App bằng FlutterFire CLI (Khuyên dùng)
-Nếu máy bạn đã cài `firebase-cli` và `flutterfire_cli`, công cụ này sẽ tự động đăng ký cả Android, iOS, Web trên Firebase Console và tạo cấu hình chuẩn xác chỉ trong một lệnh:
+#### Cách 2: Tự động đăng ký toàn bộ App bằng FlutterFire CLI (Lựa chọn nhanh nhất)
+Nếu máy tính của bạn đã cài đặt sẵn `firebase-cli` và `flutterfire_cli`:
 ```bash
 flutterfire configure
 ```
-Sau đó bạn chỉ cần sao chép nội dung file sinh ra vào `lib/core/config/firebase_options_local.dart`.
+Lệnh này sẽ tự động kết nối tài khoản Firebase của bạn, tự đăng ký cả 3 App (Android, Web, iOS) và tự động sinh mã cấu hình chuẩn 100%. Sau khi chạy xong, bạn chỉ cần copy nội dung vào file `lib/core/config/firebase_options_local.dart`.
 
 ---
 
