@@ -150,6 +150,9 @@ class BookingProcessState {
     return slotDateTime.isBefore(now);
   }
 
+  /// Kiểm tra xem đã áp dụng mã khuyến mãi hay chưa
+  bool get hasPromoApplied => appliedPromo != null;
+
   /// Kiểm tra có ít nhất 1 khung giờ hợp lệ được chọn
   bool get hasValidSelection => selectedSlots.isNotEmpty;
 
@@ -333,6 +336,10 @@ class BookingProcessViewModel extends StateNotifier<BookingProcessState> {
       appliedPromo: promo,
       clearPromoError: true,
     );
+  }
+
+  void removePromo() {
+    state = state.copyWith(clearPromo: true, clearPromoError: true);
   }
 
   void setNote(String note) {
