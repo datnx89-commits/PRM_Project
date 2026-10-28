@@ -28,7 +28,7 @@ class AdminReportsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Báo cáo doanh thu'),
+        title: Text(state.isOwnerView ? 'Báo cáo doanh thu của tôi' : 'Báo cáo doanh thu hệ thống'),
       ),
       drawer: const AppDrawer(),
       body: RefreshIndicator(

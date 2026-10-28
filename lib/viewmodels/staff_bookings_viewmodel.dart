@@ -49,7 +49,7 @@ class StaffBookingsViewModel extends StateNotifier<StaffBookingsState> {
     state = state.copyWith(isLoading: true);
     await _bookingRepository.completePastBookings();
     try {
-      final ownerId = user.role == UserRole.admin ? null : user.id;
+      final ownerId = (user.role == UserRole.admin || user.role == UserRole.superAdmin) ? null : user.id;
       final list = await _bookingRepository.getBookingsForStaff(
         ownerId: ownerId,
         status: state.selectedStatus,
@@ -81,6 +81,70 @@ class StaffBookingsViewModel extends StateNotifier<StaffBookingsState> {
       bookingId: bookingId,
       userId: user.id,
       isStaff: true,
+    );
+
+    if (success) {
+      await loadBookings();
+    }
+    return (success, msg);
+  }
+
+  /// Xác nhận đã thu tiền mặt tại quầy
+  Future<(bool, String)> confirmCashPayment(String bookingId) async {
+    final user = _ref.read(authViewModelProvider).user;
+    if (user == null) return (false, 'Chưa đăng nhập.');
+
+    final (success, msg) = await _bookingRepository.confirmCashPayment(
+      bookingId,
+      user.id,
+    );
+
+    if (success) {
+      await loadBookings();
+    }
+    return (success, msg);
+  }
+
+  /// Từ chối nhận tiền mặt / Hủy đơn do khách không trả
+  Future<(bool, String)> rejectCashPayment(String bookingId, {String? reason}) async {
+    final user = _ref.read(authViewModelProvider).user;
+    if (user == null) return (false, 'Chưa đăng nhập.');
+
+    final (success, msg) = await _bookingRepository.rejectCashPayment(
+      bookingId,
+      user.id,
+    );
+
+    if (success) {
+      await loadBookings();
+    }
+    return (success, msg);
+  }
+
+  /// Đặt hộ khách vãng lai
+  Future<(bool, String)> createWalkInBooking({
+    required String fieldId,
+    required String timeSlotId,
+    required DateTime bookingDate,
+    required String customerName,
+    required String customerPhone,
+    required double price,
+    bool isPaidCash = true,
+    String? note,
+  }) async {
+    final user = _ref.read(authViewModelProvider).user;
+    if (user == null) return (false, 'Chưa đăng nhập.');
+
+    final (success, msg) = await _bookingRepository.createWalkInBooking(
+      fieldId: fieldId,
+      timeSlotId: timeSlotId,
+      bookingDate: bookingDate,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      price: price,
+      isPaidCash: isPaidCash,
+      staffId: user.id,
+      note: note,
     );
 
     if (success) {

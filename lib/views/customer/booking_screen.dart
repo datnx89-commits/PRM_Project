@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/field_model.dart';
 import '../../data/models/time_slot_model.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/booking_viewmodel.dart';
 import 'payment_screen.dart';
 
@@ -52,10 +53,13 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     final tuple = (widget.field, widget.slots);
     final state = ref.watch(bookingProcessViewModelProvider(tuple));
     final vm = ref.read(bookingProcessViewModelProvider(tuple).notifier);
+    final authState = ref.watch(authViewModelProvider);
+    final user = authState.user;
 
     final subtotal = state.calculateSubtotal(widget.field);
-    final discount = state.calculateDiscount(widget.field);
-    final total = state.calculateTotal(widget.field);
+    final promoDiscount = state.calculatePromoDiscount(widget.field);
+    final tierDiscount = state.calculateTierDiscount(widget.field, user);
+    final total = state.calculateTotal(widget.field, user);
 
     return Scaffold(
       appBar: AppBar(
@@ -66,6 +70,38 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Banner Ngày Vàng nếu có
+            if (state.goldenDay != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade700),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.stars, color: Colors.amber.shade800),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Hôm nay là Ngày Vàng: ${state.goldenDay!.name}\n'
+                        'Hệ số giá: x${state.goldenDay!.priceMultiplier} • Tích điểm: x${state.goldenDay!.pointsMultiplier}',
+                        style: TextStyle(
+                          color: Colors.amber.shade900,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Chọn ngày
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -81,6 +117,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               ],
             ),
             const SizedBox(height: 12),
+
+            // Danh sách khung giờ
             const Text(
               'Chọn khung giờ:',
               style: TextStyle(fontWeight: FontWeight.bold),
@@ -94,6 +132,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                     children: state.allSlots.map((slot) {
                       final isBooked = state.bookedSlotIds.contains(slot.id);
                       final isSelected = state.selectedSlots.any((s) => s.id == slot.id);
+                      final slotPrice = state.getSlotPrice(widget.field, slot);
 
                       Color? bg;
                       if (isBooked) {
@@ -103,12 +142,25 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       }
 
                       return ChoiceChip(
-                        label: Text(
-                          '${slot.startTime} - ${slot.endTime}${slot.isPeak ? ' *' : ''}',
-                          style: TextStyle(
-                            color: isBooked ? Colors.grey : (isSelected ? Colors.blue.shade900 : Colors.black),
-                            decoration: isBooked ? TextDecoration.lineThrough : null,
-                          ),
+                        label: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${slot.startTime} - ${slot.endTime}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isBooked ? Colors.grey : (isSelected ? Colors.blue.shade900 : Colors.black),
+                                decoration: isBooked ? TextDecoration.lineThrough : null,
+                              ),
+                            ),
+                            Text(
+                              Formatters.currency(slotPrice),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isBooked ? Colors.grey : (isSelected ? Colors.blue.shade900 : Colors.grey.shade700),
+                              ),
+                            ),
+                          ],
                         ),
                         selected: isSelected,
                         selectedColor: Colors.blue.shade100,
@@ -119,10 +171,12 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                   ),
             const SizedBox(height: 8),
             const Text(
-              '(*) Khung giờ cao điểm (17:00 - 21:00)',
+              '(*) Giá từng khung giờ đã được tự động áp dụng bảng giá linh hoạt và ngày vàng.',
               style: TextStyle(fontSize: 12, color: Colors.deepOrange),
             ),
             const Divider(height: 24),
+
+            // Mã giảm giá
             Row(
               children: [
                 Expanded(
@@ -152,6 +206,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               ),
             ],
             const SizedBox(height: 16),
+
+            // Ghi chú
             TextField(
               controller: _noteController,
               decoration: const InputDecoration(
@@ -162,6 +218,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               onChanged: vm.setNote,
             ),
             const SizedBox(height: 16),
+
+            // Tóm tắt chi phí
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
@@ -171,7 +229,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Số khung giờ đã chọn:'),
-                        Text('${state.selectedSlots.length}'),
+                        Text('${state.selectedSlots.length}', style: const TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -182,14 +240,27 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         Text(Formatters.currency(subtotal)),
                       ],
                     ),
-                    if (discount > 0) ...[
+                    if (promoDiscount > 0) ...[
                       const SizedBox(height: 6),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Giảm giá:'),
+                          const Text('Giảm giá Voucher:'),
                           Text(
-                            '- ${Formatters.currency(discount)}',
+                            '- ${Formatters.currency(promoDiscount)}',
+                            style: const TextStyle(color: Colors.green),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (tierDiscount > 0 && user != null) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Ưu đãi Hạng ${user.membershipTier.name} (-${user.membershipTier.discountPercent}%):'),
+                          Text(
+                            '- ${Formatters.currency(tierDiscount)}',
                             style: const TextStyle(color: Colors.green),
                           ),
                         ],
@@ -240,20 +311,18 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                     final ok = await vm.submitBooking();
                     if (!context.mounted) return;
                     final nextState = ref.read(bookingProcessViewModelProvider(tuple));
-                    if (ok && nextState.successBookingId != null) {
+                    if (ok && nextState.successBookingIds.isNotEmpty) {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
                           builder: (_) => PaymentScreen(
-                            bookingId: nextState.successBookingId!,
+                            bookingIds: nextState.successBookingIds,
                             totalAmount: total,
                             fieldName: widget.field.fieldName,
                           ),
                         ),
                       );
                     }
-
-
                   },
             child: state.isLoading
                 ? const SizedBox(

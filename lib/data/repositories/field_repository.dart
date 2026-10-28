@@ -134,7 +134,7 @@ class FieldRepository {
   }
 
   Future<bool> deleteOrCloseField(String fieldId) async {
-    final bookingsSnapshot = await _firebaseService.bookingDetailsCollection
+    final bookingsSnapshot = await _firebaseService.bookingsCollection
         .where('fieldId', isEqualTo: fieldId)
         .limit(1)
         .get();
@@ -172,6 +172,13 @@ class FieldRepository {
     return snapshot.docs
         .map((doc) => FieldModel.fromMap(doc.data(), doc.id))
         .toList();
+  }
+
+  Future<List<FieldModel>> getFields({String? ownerId}) async {
+    if (ownerId != null && ownerId.isNotEmpty) {
+      return getFieldsByOwner(ownerId);
+    }
+    return getAllFieldsForAdmin();
   }
 
   Future<void> updateFieldAverageRating(String fieldId) async {

@@ -40,6 +40,34 @@ class FirebaseService {
   CollectionReference<Map<String, dynamic>> get reviewsCollection =>
       firestore.collection('reviews');
 
+  // Các collection mới
+  CollectionReference<Map<String, dynamic>> get walletsCollection =>
+      firestore.collection('wallets');
+
+  CollectionReference<Map<String, dynamic>> get walletTransactionsCollection =>
+      firestore.collection('wallet_transactions');
+
+  CollectionReference<Map<String, dynamic>> get pointTransactionsCollection =>
+      firestore.collection('point_transactions');
+
+  CollectionReference<Map<String, dynamic>> get pricingRulesCollection =>
+      firestore.collection('field_pricing_rules');
+
+  CollectionReference<Map<String, dynamic>> get goldenDaysCollection =>
+      firestore.collection('golden_days');
+
+  CollectionReference<Map<String, dynamic>> get maintenanceRequestsCollection =>
+      firestore.collection('maintenance_requests');
+
+  CollectionReference<Map<String, dynamic>> get refundRequestsCollection =>
+      firestore.collection('refund_requests');
+
+  CollectionReference<Map<String, dynamic>> get notificationsCollection =>
+      firestore.collection('app_notifications');
+
+  CollectionReference<Map<String, dynamic>> get chatConversationsCollection =>
+      firestore.collection('chat_conversations');
+
   static Future<void> initialize() async {
     try {
       await Firebase.initializeApp(

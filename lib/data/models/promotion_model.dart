@@ -8,6 +8,7 @@ class PromotionModel {
   final String endDate;
   final int quantity;
   final bool isActive;
+  final String? ownerId; // null = mã hệ thống (Admin), có ownerId = mã của chủ sân
 
   PromotionModel({
     required this.id,
@@ -19,6 +20,7 @@ class PromotionModel {
     required this.endDate,
     required this.quantity,
     this.isActive = true,
+    this.ownerId,
   });
 
   PromotionModel copyWith({
@@ -31,6 +33,7 @@ class PromotionModel {
     String? endDate,
     int? quantity,
     bool? isActive,
+    String? ownerId,
   }) {
     return PromotionModel(
       id: id ?? this.id,
@@ -42,12 +45,18 @@ class PromotionModel {
       endDate: endDate ?? this.endDate,
       quantity: quantity ?? this.quantity,
       isActive: isActive ?? this.isActive,
+      ownerId: ownerId ?? this.ownerId,
     );
   }
 
   bool isValidForDate(String yyyyMmDd) {
     if (!isActive || quantity <= 0) return false;
     return yyyyMmDd.compareTo(startDate) >= 0 && yyyyMmDd.compareTo(endDate) <= 0;
+  }
+
+  bool isValidForField(String fieldOwnerId) {
+    if (ownerId == null || ownerId!.isEmpty) return true;
+    return ownerId == fieldOwnerId;
   }
 
   double calculateDiscount(double subtotal) {
@@ -69,6 +78,7 @@ class PromotionModel {
       'endDate': endDate,
       'quantity': quantity,
       'isActive': isActive,
+      'ownerId': ownerId,
     };
   }
 
@@ -83,6 +93,7 @@ class PromotionModel {
       endDate: map['endDate'] ?? '',
       quantity: (map['quantity'] as num?)?.toInt() ?? 0,
       isActive: map['isActive'] ?? true,
+      ownerId: map['ownerId'],
     );
   }
 }

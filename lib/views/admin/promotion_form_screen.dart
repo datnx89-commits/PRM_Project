@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/promotion_model.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/promotion_viewmodel.dart';
 
 class PromotionFormScreen extends ConsumerStatefulWidget {
@@ -82,6 +83,10 @@ class _PromotionFormScreenState extends ConsumerState<PromotionFormScreen> {
     final maxDisc = double.tryParse(_maxDiscountController.text) ?? 0.0;
     final qty = int.tryParse(_quantityController.text) ?? 0;
 
+    final currentUser = ref.read(authViewModelProvider).user;
+    final isAdmin = currentUser?.role == 'Admin' || currentUser?.role == 'SuperAdmin';
+    final ownerId = widget.promo != null ? widget.promo?.ownerId : (isAdmin ? null : currentUser?.id);
+
     final promo = PromotionModel(
       id: widget.promo?.id ?? '',
       code: _codeController.text.trim().toUpperCase(),
@@ -92,6 +97,7 @@ class _PromotionFormScreenState extends ConsumerState<PromotionFormScreen> {
       endDate: _endDate,
       quantity: qty,
       isActive: widget.promo?.isActive ?? true,
+      ownerId: ownerId,
     );
 
     final vm = ref.read(promotionViewModelProvider.notifier);
@@ -110,6 +116,9 @@ class _PromotionFormScreenState extends ConsumerState<PromotionFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = ref.watch(authViewModelProvider).user;
+    final isAdmin = currentUser?.role == 'Admin' || currentUser?.role == 'SuperAdmin';
+    final isOwnerPromo = widget.promo != null ? widget.promo?.ownerId != null : !isAdmin;
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Sửa khuyến mãi' : 'Tạo khuyến mãi mới'),
@@ -119,7 +128,42 @@ class _PromotionFormScreenState extends ConsumerState<PromotionFormScreen> {
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: isOwnerPromo ? Colors.green.shade50 : Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isOwnerPromo ? Colors.green.shade300 : Colors.blue.shade300,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isOwnerPromo ? Icons.storefront : Icons.public,
+                      color: isOwnerPromo ? Colors.green.shade700 : Colors.blue.shade700,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isOwnerPromo
+                            ? 'Phạm vi: Áp dụng riêng cho các sân bóng của bạn.'
+                            : 'Phạm vi: Toàn hệ thống (khách áp dụng được cho mọi sân).',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isOwnerPromo ? Colors.green.shade900 : Colors.blue.shade900,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               TextFormField(
                 controller: _codeController,
                 decoration: const InputDecoration(labelText: 'Mã khuyến mãi (VD: SUMMER26)', border: OutlineInputBorder()),

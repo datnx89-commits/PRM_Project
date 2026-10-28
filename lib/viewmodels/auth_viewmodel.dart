@@ -85,6 +85,10 @@ class AuthViewModel extends StateNotifier<AuthState> {
     return (success, message);
   }
 
+  Future<void> refreshUser() async {
+    await checkCurrentUser();
+  }
+
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
     await _authRepository.logout();
@@ -93,6 +97,35 @@ class AuthViewModel extends StateNotifier<AuthState> {
       isLoading: false,
       errorMessage: null,
     );
+  }
+
+  Future<(bool, String)> updateBankInfo({
+    required String bankName,
+    required String bankAccountNumber,
+    required String bankAccountHolder,
+  }) async {
+    final user = state.user;
+    if (user == null) return (false, 'Chưa đăng nhập.');
+    if (bankName.trim().isEmpty ||
+        bankAccountNumber.trim().isEmpty ||
+        bankAccountHolder.trim().isEmpty) {
+      return (false, 'Vui lòng điền đầy đủ thông tin tài khoản ngân hàng.');
+    }
+    state = state.copyWith(isLoading: true);
+    try {
+      await _authRepository.updateBankInfo(
+        userId: user.id,
+        bankName: bankName,
+        bankAccountNumber: bankAccountNumber,
+        bankAccountHolder: bankAccountHolder,
+      );
+      await refreshUser();
+      state = state.copyWith(isLoading: false);
+      return (true, 'Cập nhật tài khoản ngân hàng thành công.');
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+      return (false, 'Lỗi cập nhật: $e');
+    }
   }
 }
 

@@ -30,13 +30,17 @@ class SportsBookApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Hệ thống đặt sân',
+      title: 'Hệ thống đặt sân SportsBook',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blueGrey,
+          seedColor: Colors.teal,
           brightness: Brightness.light,
+        ),
+        appBarTheme: const AppBarTheme(
+          centerTitle: true,
+          elevation: 0,
         ),
       ),
       home: const AuthGate(),
@@ -66,7 +70,9 @@ class AuthGate extends ConsumerWidget {
 
     switch (user.role) {
       case UserRole.admin:
+      case UserRole.superAdmin:
         return const AdminReportsScreen();
+      case UserRole.owner:
       case UserRole.staff:
         return const StaffBookingsScreen();
       case UserRole.customer:

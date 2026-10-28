@@ -70,20 +70,29 @@ class MyBookingsViewModel extends StateNotifier<MyBookingsState> {
     return (success, msg);
   }
 
-  Future<(bool, String)> payBooking(String bookingId, String method) async {
+  Future<(bool, String)> payBookings(
+    List<String> bookingIds,
+    String method, {
+    int pointsToUse = 0,
+  }) async {
     final user = _ref.read(authViewModelProvider).user;
     if (user == null) return (false, 'Chưa đăng nhập.');
 
-    final (success, msg) = await _bookingRepository.payBooking(
-      bookingId: bookingId,
+    final (success, msg) = await _bookingRepository.payBookings(
+      bookingIds: bookingIds,
       userId: user.id,
       method: method,
+      pointsToUse: pointsToUse,
     );
 
     if (success) {
       await loadBookings();
     }
     return (success, msg);
+  }
+
+  Future<(bool, String)> payBooking(String bookingId, String method, {int pointsToUse = 0}) async {
+    return payBookings([bookingId], method, pointsToUse: pointsToUse);
   }
 
   Future<(bool, String)> addReview({

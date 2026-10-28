@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/formatters.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/promotion_viewmodel.dart';
 
 import '../shared/app_drawer.dart';
@@ -13,23 +14,41 @@ class PromotionManagementScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(promotionViewModelProvider);
     final vm = ref.read(promotionViewModelProvider.notifier);
+    final currentUser = ref.watch(authViewModelProvider).user;
+    final isAdmin = currentUser?.role == 'Admin' || currentUser?.role == 'SuperAdmin';
+    final isOwnerOrStaff = currentUser?.role == 'Owner' || currentUser?.role == 'Staff';
+
+    // Lọc danh sách khuyến mãi:
+    // Admin thấy tất cả.
+    // Owner/Staff thấy mã của sân mình + mã toàn hệ thống.
+    final displayedPromos = state.promotions.where((p) {
+      if (isAdmin) return true;
+      if (isOwnerOrStaff) {
+        return p.ownerId == currentUser?.id || p.ownerId == null || p.ownerId!.isEmpty;
+      }
+      return p.ownerId == null || p.ownerId!.isEmpty;
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quản lý khuyến mãi'),
+        title: Text(isAdmin ? 'Quản lý khuyến mãi hệ thống' : 'Khuyến mãi & Ưu đãi sân'),
       ),
       drawer: const AppDrawer(),
       body: RefreshIndicator(
         onRefresh: vm.loadPromotions,
         child: state.isLoading
             ? const Center(child: CircularProgressIndicator())
-            : state.promotions.isEmpty
+            : displayedPromos.isEmpty
                 ? const Center(child: Text('Chưa có mã khuyến mãi nào.'))
                 : ListView.builder(
                     padding: const EdgeInsets.all(8),
-                    itemCount: state.promotions.length,
+                    itemCount: displayedPromos.length,
                     itemBuilder: (context, index) {
-                      final p = state.promotions[index];
+                      final p = displayedPromos[index];
+                      final isOwnerPromo = p.ownerId == currentUser?.id;
+                      final isSystemPromo = p.ownerId == null || p.ownerId!.isEmpty;
+                      final canEdit = isAdmin || isOwnerPromo;
+
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         child: ListTile(
@@ -41,6 +60,43 @@ class PromotionManagementScreen extends ConsumerWidget {
                                 label: Text('-${p.discountPercent}%'),
                                 padding: EdgeInsets.zero,
                               ),
+                              const SizedBox(width: 6),
+                              if (isSystemPromo)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Hệ thống',
+                                    style: TextStyle(fontSize: 11, color: Colors.blue.shade800, fontWeight: FontWeight.w600),
+                                  ),
+                                )
+                              else if (isOwnerPromo)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Sân của bạn',
+                                    style: TextStyle(fontSize: 11, color: Colors.green.shade800, fontWeight: FontWeight.w600),
+                                  ),
+                                )
+                              else
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Chủ sân',
+                                    style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
                             ],
                           ),
                           subtitle: Column(
@@ -57,19 +113,20 @@ class PromotionManagementScreen extends ConsumerWidget {
                             children: [
                               Switch(
                                 value: p.isActive,
-                                onChanged: (_) => vm.toggleActive(p.id),
+                                onChanged: canEdit ? (_) => vm.toggleActive(p.id) : null,
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.edit, size: 20),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => PromotionFormScreen(promo: p),
-                                    ),
-                                  );
-                                },
-                              ),
+                              if (canEdit)
+                                IconButton(
+                                  icon: const Icon(Icons.edit, size: 20),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => PromotionFormScreen(promo: p),
+                                      ),
+                                    );
+                                  },
+                                ),
                             ],
                           ),
                         ),

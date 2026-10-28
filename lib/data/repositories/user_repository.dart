@@ -25,4 +25,17 @@ class UserRepository {
   Future<void> changeUserRole(String userId, String newRole) async {
     await _firebaseService.usersCollection.doc(userId).update({'role': newRole});
   }
+
+  Future<void> updateBankInfo({
+    required String userId,
+    required String bankName,
+    required String bankAccountNumber,
+    required String bankAccountHolder,
+  }) async {
+    await _firebaseService.usersCollection.doc(userId).update({
+      'bankName': bankName.trim(),
+      'bankAccountNumber': bankAccountNumber.trim(),
+      'bankAccountHolder': bankAccountHolder.trim(),
+    });
+  }
 }

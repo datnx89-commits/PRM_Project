@@ -31,4 +31,14 @@ class Formatters {
     } catch (_) {}
     return yyyyMmDd;
   }
+
+  static String dateTimeString(dynamic val) {
+    if (val == null) return '';
+    if (val is DateTime) return dateTime(val);
+    try {
+      final dt = DateTime.tryParse(val.toString());
+      if (dt != null) return dateTime(dt);
+    } catch (_) {}
+    return val.toString();
+  }
 }
