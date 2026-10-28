@@ -10,6 +10,7 @@ import '../../data/providers.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/my_bookings_viewmodel.dart';
 import 'my_bookings_screen.dart';
+import 'wallet_screen.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   final String? bookingId;
@@ -305,8 +306,27 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                       const Text('Sân này không chấp nhận thanh toán bằng ví.', style: TextStyle(color: Colors.red, fontSize: 12))
                     else if (isWalletLocked)
                       const Text('Ví đang bị khóa bởi quản trị viên.', style: TextStyle(color: Colors.red, fontSize: 12))
-                    else if (isWalletInsufficient)
+                    else if (isWalletInsufficient) ...[
                       const Text('Số dư ví không đủ để thanh toán.', style: TextStyle(color: Colors.orange, fontSize: 12)),
+                      const SizedBox(height: 4),
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const WalletScreen()),
+                          ).then((_) => _loadData());
+                        },
+                        child: const Text(
+                          '⚡ Nạp thêm vào ví ngay',
+                          style: TextStyle(
+                            color: Colors.indigo,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 trailing: Radio<String>(
