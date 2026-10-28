@@ -40,14 +40,20 @@ class ChatRepository {
 
     if (query.docs.isNotEmpty) {
       final doc = query.docs.first;
-      // Cập nhật sân đang hỏi nếu khác
-      if (fieldId != null && doc.data()['fieldId'] != fieldId) {
-        await doc.reference.update({
-          'fieldId': fieldId,
-          'fieldName': fieldName,
-        });
+      final data = Map<String, dynamic>.from(doc.data());
+      // Cập nhật sân đang hỏi và tên 2 bên (nếu đổi) để màn chat hiển thị đúng
+      final updates = <String, dynamic>{};
+      if (fieldId != null && data['fieldId'] != fieldId) {
+        updates['fieldId'] = fieldId;
+        updates['fieldName'] = fieldName;
       }
-      return ChatConversationModel.fromMap(doc.data(), doc.id);
+      if (data['ownerName'] != ownerName) updates['ownerName'] = ownerName;
+      if (data['customerName'] != customerName) updates['customerName'] = customerName;
+      if (updates.isNotEmpty) {
+        await doc.reference.update(updates);
+        data.addAll(updates);
+      }
+      return ChatConversationModel.fromMap(data, doc.id);
     }
 
     final docRef = _firebase.chatConversationsCollection.doc();
