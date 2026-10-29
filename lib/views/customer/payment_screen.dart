@@ -249,8 +249,25 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                       ),
                       if (_usePoints) ...[
                         const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Quy đổi: $_pointsToUse điểm = -${Formatters.currency(_pointDiscount)}',
+                              style: const TextStyle(fontSize: 12, color: Colors.blueGrey, fontWeight: FontWeight.w600),
+                            ),
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              onPressed: () => setState(() => _pointsToUse = _maxPoints),
+                              child: const Text('Dùng tối đa', style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                        ),
                         Slider(
-                          value: _pointsToUse.toDouble(),
+                          value: _pointsToUse.toDouble().clamp(0.0, _maxPoints.toDouble()),
                           min: 0,
                           max: _maxPoints.toDouble(),
                           divisions: _maxPoints > 10 ? (_maxPoints / 10).round() : 1,
