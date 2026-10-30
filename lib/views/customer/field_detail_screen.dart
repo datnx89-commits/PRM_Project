@@ -23,6 +23,13 @@ class FieldDetailScreen extends ConsumerWidget {
       return;
     }
 
+    if ((field.ownerId as String).isEmpty || field.ownerId == user.id) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể nhắn tin: sân chưa có chủ sân hoặc bạn là chủ sân này.')),
+      );
+      return;
+    }
+
     try {
       final chatRepo = ref.read(chatRepositoryProvider);
       final conv = await chatRepo.getOrCreateConversation(
