@@ -112,25 +112,51 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   double get _finalAmount => (widget.totalAmount - _pointDiscount).clamp(0.0, double.infinity);
 
   Future<void> _processPayment() async {
-    setState(() => _isProcessing = true);
-    final (success, msg) = await ref
-        .read(myBookingsViewModelProvider.notifier)
-        .payBookings(
-          widget.effectiveBookingIds,
-          _selectedMethod,
-          pointsToUse: _usePoints ? _pointsToUse : 0,
-        );
-
-    if (mounted) {
-      setState(() => _isProcessing = false);
+    if (_isProcessing) return;
+    if (_selectedMethod == PaymentMethod.wallet && (_wallet?.balance ?? 0.0) < _finalAmount) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg)),
+        const SnackBar(
+          content: Text('Số dư ví không đủ để thanh toán. Vui lòng nạp thêm tiền hoặc chọn phương thức khác.'),
+          backgroundColor: Colors.red,
+        ),
       );
-      if (success) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
-          (route) => route.isFirst,
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+    try {
+      final (success, msg) = await ref
+          .read(myBookingsViewModelProvider.notifier)
+          .payBookings(
+            widget.effectiveBookingIds,
+            _selectedMethod,
+            pointsToUse: _usePoints ? _pointsToUse : 0,
+          );
+
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+        if (success) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+            (route) => route.isFirst,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi kết nối khi xử lý thanh toán: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
