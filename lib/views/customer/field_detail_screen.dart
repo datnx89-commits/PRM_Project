@@ -31,12 +31,24 @@ class FieldDetailScreen extends ConsumerWidget {
     }
 
     try {
+      // Lấy tên thật của chủ sân để hiển thị ở 2 phía
+      String ownerName = 'Chủ sân ${field.fieldName}';
+      try {
+        final ownerDoc = await ref
+            .read(firebaseServiceProvider)
+            .usersCollection
+            .doc(field.ownerId)
+            .get();
+        final name = ownerDoc.data()?['fullName'] as String?;
+        if (name != null && name.trim().isNotEmpty) ownerName = name;
+      } catch (_) {}
+
       final chatRepo = ref.read(chatRepositoryProvider);
       final conv = await chatRepo.getOrCreateConversation(
         customerId: user.id,
         customerName: user.fullName,
         ownerId: field.ownerId,
-        ownerName: 'Chủ sân ${field.fieldName}',
+        ownerName: ownerName,
         fieldId: field.id,
         fieldName: field.fieldName,
       );
