@@ -89,7 +89,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             if (widget.conversation.fieldName != null)
               Text(
                 'Sân: ${widget.conversation.fieldName}',
-                style: const TextStyle(fontSize: 11, color: Colors.white70),
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
               ),
           ],
         ),
