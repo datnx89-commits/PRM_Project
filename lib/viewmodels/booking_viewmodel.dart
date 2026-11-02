@@ -246,29 +246,37 @@ class BookingProcessViewModel extends StateNotifier<BookingProcessState> {
 
     state = state.copyWith(isLoading: true, errorMessage: null);
 
-    final (success, message, bookingIds) = await _bookingRepository.createBooking(
-      userId: user.id,
-      userEmail: user.email,
-      userFullName: user.fullName,
-      userPhone: user.phone,
-      field: field,
-      bookingDate: state.selectedDate,
-      selectedSlots: state.selectedSlots,
-      promo: state.appliedPromo,
-      note: state.note.isEmpty ? null : state.note,
-      userLifetimePoints: user.lifetimePoints,
-    );
-
-    if (success && bookingIds.isNotEmpty) {
-      state = state.copyWith(
-        isLoading: false,
-        successBookingIds: bookingIds,
+    try {
+      final (success, message, bookingIds) = await _bookingRepository.createBooking(
+        userId: user.id,
+        userEmail: user.email,
+        userFullName: user.fullName,
+        userPhone: user.phone,
+        field: field,
+        bookingDate: state.selectedDate,
+        selectedSlots: state.selectedSlots,
+        promo: state.appliedPromo,
+        note: state.note.isEmpty ? null : state.note,
+        userLifetimePoints: user.lifetimePoints,
       );
-      return true;
-    } else {
+
+      if (success && bookingIds.isNotEmpty) {
+        state = state.copyWith(
+          isLoading: false,
+          successBookingIds: bookingIds,
+        );
+        return true;
+      } else {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: message,
+        );
+        return false;
+      }
+    } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: message,
+        errorMessage: 'Lỗi khi đặt sân: $e',
       );
       return false;
     }

@@ -124,7 +124,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            state.isLoading && state.bookedSlotIds.isEmpty
+            state.isLoading && state.allSlots.isEmpty
                 ? const Center(child: CircularProgressIndicator())
                 : Wrap(
                     spacing: 8,

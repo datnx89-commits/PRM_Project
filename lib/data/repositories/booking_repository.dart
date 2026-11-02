@@ -114,14 +114,20 @@ class BookingRepository {
       }
     }
 
-    // Kiểm tra sân có đang trong khoảng bảo trì đã duyệt hay không
-    final inMaintenance = (await _firebaseService.maintenanceRequestsCollection
-            .where('fieldId', isEqualTo: field.id)
-            .where('status', isEqualTo: MaintenanceStatus.approved)
-            .where('startDate', isLessThanOrEqualTo: bookingDate)
-            .get())
-        .docs
-        .any((d) => (d.data()['endDate'] as String? ?? '').compareTo(bookingDate) >= 0);
+    // Kiểm tra sân có đang trong khoảng bảo trì đã duyệt hay không (lọc trong bộ nhớ để tránh lỗi thiếu Composite Index của Firestore)
+    bool inMaintenance = false;
+    try {
+      final maintenanceSnap = await _firebaseService.maintenanceRequestsCollection
+          .where('fieldId', isEqualTo: field.id)
+          .get();
+      inMaintenance = maintenanceSnap.docs.any((d) {
+        final data = d.data();
+        if (data['status'] != MaintenanceStatus.approved) return false;
+        final start = data['startDate'] as String? ?? '';
+        final end = data['endDate'] as String? ?? '';
+        return start.compareTo(bookingDate) <= 0 && end.compareTo(bookingDate) >= 0;
+      });
+    } catch (_) {}
 
     if (inMaintenance) {
       return (false, 'Sân đang bảo trì trong ngày này, vui lòng chọn ngày khác.', none);
@@ -207,32 +213,78 @@ class BookingRepository {
       ));
     }
 
-    // Chống trùng lịch bằng Firestore Transaction
+    // Chống trùng lịch bằng Firestore Transaction tuân thủ chuẩn Firestore:
+    // Thực hiện truy vấn kiểm tra trước, sau đó dùng Transaction với các DocumentSnapshot cụ thể để khóa nguyên tử
     try {
+      // 1. Kiểm tra conflict trước khi vào Transaction (tránh query bên trong callback gây deadlock)
+      for (var b in bookingsToCreate) {
+        final conflictQuery = await _firebaseService.bookingsCollection
+            .where('fieldId', isEqualTo: b.fieldId)
+            .where('bookingDate', isEqualTo: b.bookingDate)
+            .where('timeSlotId', isEqualTo: b.timeSlotId)
+            .get();
+
+        final hasConflict = conflictQuery.docs
+            .any((d) => d.data()['status'] != BookingStatus.cancelled);
+
+        if (hasConflict) {
+          return (false, 'Khung giờ ${b.startTime} - ${b.endTime} vừa được người khác đặt trước. Vui lòng chọn lại.', none);
+        }
+      }
+
+      // 2. Transaction khóa nguyên tử với Document Reference (tx.get trước, tx.set sau)
       final success = await _firebaseService.firestore.runTransaction<bool>((tx) async {
+        // [A] TẤT CẢ CÁC THAO TÁC ĐỌC (READS) PHẢI THỰC HIỆN TRƯỚC
         for (var b in bookingsToCreate) {
-          final conflictQuery = await _firebaseService.bookingsCollection
-              .where('fieldId', isEqualTo: b.fieldId)
-              .where('bookingDate', isEqualTo: b.bookingDate)
-              .where('timeSlotId', isEqualTo: b.timeSlotId)
-              .get();
-
-          final hasConflict = conflictQuery.docs
-              .any((d) => d.data()['status'] != BookingStatus.cancelled);
-
-          if (hasConflict) return false;
+          final lockRef = _firebaseService.firestore
+              .collection('slot_locks')
+              .doc('${b.fieldId}_${b.bookingDate}_${b.timeSlotId}');
+          final lockSnap = await tx.get(lockRef);
+          if (lockSnap.exists) {
+            final data = lockSnap.data();
+            if (data != null && data['status'] != BookingStatus.cancelled) {
+              return false; // Khung giờ vừa bị khóa bởi người khác
+            }
+          }
         }
 
-        // Lưu từng booking độc lập
+        DocumentSnapshot<Map<String, dynamic>>? promoSnap;
+        if (promo != null) {
+          final promoRef = _firebaseService.promotionsCollection.doc(promo.id);
+          promoSnap = await tx.get(promoRef);
+          if (promoSnap.exists) {
+            final promoData = promoSnap.data();
+            final currentQty = (promoData?['quantity'] as num?)?.toInt() ?? 0;
+            if (currentQty < selectedSlots.length) {
+              return false; // Mã khuyến mãi đã hết lượt
+            }
+          }
+        }
+
+        // [B] TẤT CẢ CÁC THAO TÁC GHI (WRITES) THỰC HIỆN SAU ĐỌC
         for (var b in bookingsToCreate) {
+          final lockRef = _firebaseService.firestore
+              .collection('slot_locks')
+              .doc('${b.fieldId}_${b.bookingDate}_${b.timeSlotId}');
+          tx.set(lockRef, {
+            'bookingId': b.id,
+            'fieldId': b.fieldId,
+            'bookingDate': b.bookingDate,
+            'timeSlotId': b.timeSlotId,
+            'status': BookingStatus.pending,
+            'userId': b.userId,
+            'createdAt': DateTime.now().toIso8601String(),
+          });
+
           final bRef = _firebaseService.bookingsCollection.doc(b.id);
           tx.set(bRef, b.toMap());
         }
 
-        // Cập nhật số lượng mã khuyến mãi nếu có
-        if (promo != null) {
+        if (promo != null && promoSnap != null && promoSnap.exists) {
+          final promoData = promoSnap.data();
+          final currentQty = (promoData?['quantity'] as num?)?.toInt() ?? 0;
           final promoRef = _firebaseService.promotionsCollection.doc(promo.id);
-          tx.update(promoRef, {'quantity': promo.quantity - selectedSlots.length});
+          tx.update(promoRef, {'quantity': currentQty - selectedSlots.length});
         }
 
         return true;
@@ -263,8 +315,8 @@ class BookingRepository {
         'Đặt sân thành công (${selectedSlots.length} khung giờ, tổng ${grandTotal.toInt()}đ)$goldenNote.$tierNote Vui lòng thanh toán để xác nhận.',
         bookingIds
       );
-    } catch (_) {
-      return (false, 'Đã xảy ra lỗi khi tạo đơn đặt sân. Vui lòng thử lại.', none);
+    } catch (e) {
+      return (false, 'Đã xảy ra lỗi khi tạo đơn đặt sân: $e', none);
     }
   }
 
@@ -349,11 +401,20 @@ class BookingRepository {
       }
     }
 
-    // 1. Cập nhật trạng thái booking thành Cancelled
+    // 1. Cập nhật trạng thái booking thành Cancelled và giải phóng lock slot
     await _firebaseService.bookingsCollection.doc(bookingId).update({
       'status': BookingStatus.cancelled,
       'paymentStatus': booking.isPaid ? PaymentStatus.refunded : booking.paymentStatus,
     });
+
+    try {
+      final slotId = booking.timeSlotId;
+      final fId = booking.fieldId;
+      final bDate = booking.effectiveBookingDate;
+      if (fId.isNotEmpty && bDate.isNotEmpty && slotId.isNotEmpty) {
+        await _firebaseService.firestore.collection('slot_locks').doc('${fId}_${bDate}_$slotId').delete();
+      }
+    } catch (_) {}
 
     // Cập nhật trạng thái thanh toán trong paymentsCollection sang Refunded nếu đã thanh toán
     if (booking.isPaid) {
