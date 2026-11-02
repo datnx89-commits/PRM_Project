@@ -14,6 +14,7 @@ import '../customer/my_bookings_screen.dart';
 import '../customer/notifications_screen.dart';
 import '../customer/wallet_screen.dart';
 import '../shared/maintenance_management_screen.dart';
+import 'conversations_screen.dart';
 import '../staff/manage_fields_screen.dart';
 import '../staff/staff_bookings_screen.dart';
 import '../../seed_main.dart';
@@ -157,6 +158,17 @@ class AppDrawer extends ConsumerWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const WalletScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.chat, color: Colors.teal),
+              title: const Text('Tin nhắn'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ConversationsScreen()),
                 );
               },
             ),
