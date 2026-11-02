@@ -82,9 +82,10 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: isAdd ? Colors.teal : Colors.red),
               onPressed: () {
-                if (amountCtrl.text.trim().isEmpty || reasonCtrl.text.trim().isEmpty) {
+                final amount = double.tryParse(amountCtrl.text.trim());
+                if (amount == null || !amount.isFinite || amount <= 0 || reasonCtrl.text.trim().isEmpty) {
                   ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('Vui lòng nhập đủ số tiền và lý do.')),
+                    const SnackBar(content: Text('Nhập số tiền lớn hơn 0 và lý do điều chỉnh.')),
                   );
                   return;
                 }
@@ -183,9 +184,10 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: isAdd ? Colors.amber.shade700 : Colors.red),
               onPressed: () {
-                if (pointsCtrl.text.trim().isEmpty || reasonCtrl.text.trim().isEmpty) {
+                final points = int.tryParse(pointsCtrl.text.trim());
+                if (points == null || points <= 0 || reasonCtrl.text.trim().isEmpty) {
                   ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('Vui lòng nhập đủ số điểm và lý do.')),
+                    const SnackBar(content: Text('Nhập số điểm lớn hơn 0 và lý do điều chỉnh.')),
                   );
                   return;
                 }
@@ -271,6 +273,9 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                     itemCount: state.users.length,
                     itemBuilder: (context, index) {
                       final u = state.users[index];
+                      final canChangeAccess = currentUser != null &&
+                          u.id != currentUser.id &&
+                          u.role != UserRole.superAdmin;
                       return Card(
                         elevation: 2,
                         margin: const EdgeInsets.symmetric(vertical: 6),
@@ -324,7 +329,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                                     value: u.isActive,
                                     activeThumbColor: Colors.teal,
                                     inactiveThumbColor: Colors.red,
-                                    onChanged: (_) => vm.toggleActive(u.id),
+                                    onChanged: canChangeAccess ? (_) => vm.toggleActive(u.id) : null,
                                   ),
                                 ],
                               ),
@@ -351,11 +356,13 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                                       DropdownMenuItem(value: UserRole.owner, child: Text('Chủ sân (Owner)')),
                                       DropdownMenuItem(value: UserRole.admin, child: Text('Admin')),
                                     ],
-                                    onChanged: (newRole) {
-                                      if (newRole != null && newRole != u.role) {
-                                        vm.changeRole(u.id, newRole);
-                                      }
-                                    },
+                                    onChanged: canChangeAccess
+                                        ? (newRole) {
+                                            if (newRole != null && newRole != u.role) {
+                                              vm.changeRole(u.id, newRole);
+                                            }
+                                          }
+                                        : null,
                                   ),
                                 ],
                               ),

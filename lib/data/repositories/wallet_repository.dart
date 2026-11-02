@@ -214,6 +214,9 @@ class WalletRepository {
     if (reason.trim().isEmpty) {
       return (false, 'Cộng/trừ tiền thủ công bắt buộc phải ghi lý do.');
     }
+    if (!amount.isFinite || amount == 0) {
+      return (false, 'Số tiền điều chỉnh phải khác 0.');
+    }
     final wallet = await getOrCreateWallet(userId);
     if (wallet.balance + amount < 0) {
       return (false, 'Không thể trừ quá số dư hiện tại của ví.');

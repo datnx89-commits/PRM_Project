@@ -324,6 +324,9 @@ class PointRepository {
     if (reason.trim().isEmpty) {
       return (false, 'Cộng/trừ điểm thủ công bắt buộc phải ghi lý do.');
     }
+    if (points == 0) {
+      return (false, 'Số điểm điều chỉnh phải khác 0.');
+    }
     final userDoc = await _firebase.usersCollection.doc(userId).get();
     if (!userDoc.exists || userDoc.data() == null) {
       return (false, 'Không tìm thấy người dùng.');
