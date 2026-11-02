@@ -34,6 +34,7 @@ class AdminReportsScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: vm.loadReport,
         child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -55,6 +56,15 @@ class AdminReportsScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               if (state.isLoading)
                 const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+              else if (state.errorMessage != null)
+                Center(
+                  child: Column(
+                    children: [
+                      Text(state.errorMessage!),
+                      TextButton(onPressed: vm.loadReport, child: const Text('Thử lại')),
+                    ],
+                  ),
+                )
               else if (s != null) ...[
                 Row(
                   children: [

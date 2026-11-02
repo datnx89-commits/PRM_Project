@@ -19,7 +19,7 @@ class ReportRepository {
     String? ownerId,
   }) async {
     final start = DateTime(fromDate.year, fromDate.month, fromDate.day);
-    final end = DateTime(toDate.year, toDate.month, toDate.day, 23, 59, 59);
+    final endExclusive = DateTime(toDate.year, toDate.month, toDate.day + 1);
 
     // 1. Lấy danh sách sân bóng (lọc theo ownerId nếu có)
     Query<Map<String, dynamic>> fieldsQuery = _firebaseService.fieldsCollection;
@@ -71,7 +71,7 @@ class ReportRepository {
 
       // Xác định thời điểm thanh toán
       final effectivePaidAt = payment?.paidAt ?? b.paidAt ?? b.createdAt;
-      if (effectivePaidAt.isBefore(start) || effectivePaidAt.isAfter(end)) continue;
+      if (effectivePaidAt.isBefore(start) || !effectivePaidAt.isBefore(endExclusive)) continue;
 
       final amount = payment?.amount ?? b.totalAmount;
       totalRevenue += amount;
@@ -85,14 +85,12 @@ class ReportRepository {
       dailyMap[dStr] = (currDaily.$1 + amount, currDaily.$2 + 1);
 
       // Thống kê theo sân
-      final fName = fieldNameMap[b.fieldId] ?? b.fieldName ?? 'Sân thể thao';
-      final currField = fieldStats[fName] ?? (0, 0.0);
-      fieldStats[fName] = (currField.$1 + 1, currField.$2 + amount);
+      fieldNameMap.putIfAbsent(b.fieldId, () => b.fieldName ?? 'Sân thể thao');
+      final currField = fieldStats[b.fieldId] ?? (0, 0.0);
+      fieldStats[b.fieldId] = (currField.$1 + 1, currField.$2 + amount);
     }
 
-    final totalCustomers = customerIds.isNotEmpty
-        ? customerIds.length
-        : (await _firebaseService.usersCollection.where('role', isEqualTo: UserRole.customer).get()).docs.length;
+    final totalCustomers = customerIds.length;
 
     final revenueByDays = dailyMap.entries
         .map((e) => RevenueByDay(date: e.key, revenue: e.value.$1, bookingCount: e.value.$2))
@@ -100,7 +98,11 @@ class ReportRepository {
     revenueByDays.sort((a, b) => a.date.compareTo(b.date));
 
     final topFields = fieldStats.entries
-        .map((e) => TopField(fieldName: e.key, bookingCount: e.value.$1, revenue: e.value.$2))
+        .map((e) => TopField(
+              fieldName: fieldNameMap[e.key] ?? 'Sân thể thao',
+              bookingCount: e.value.$1,
+              revenue: e.value.$2,
+            ))
         .toList();
     topFields.sort((a, b) => b.revenue.compareTo(a.revenue));
 
