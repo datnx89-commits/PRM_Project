@@ -50,14 +50,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     _messageController.clear();
     final repo = ref.read(chatRepositoryProvider);
-    await repo.sendMessage(
-      conversationId: widget.conversation.id,
-      senderId: user.id,
-      senderName: user.fullName,
-      content: text,
-    );
-
-    _scrollToBottom();
+    try {
+      await repo.sendMessage(
+        conversationId: widget.conversation.id,
+        senderId: user.id,
+        senderName: user.fullName,
+        content: text,
+      );
+      _scrollToBottom();
+    } catch (_) {
+      if (!mounted) return;
+      // Trả lại nội dung chưa gửi được để người dùng khỏi phải gõ lại
+      if (_messageController.text.isEmpty) _messageController.text = text;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không gửi được tin nhắn. Vui lòng thử lại.')),
+      );
+    }
   }
 
   void _scrollToBottom() {
