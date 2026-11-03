@@ -77,6 +77,12 @@ class _PromotionFormScreenState extends ConsumerState<PromotionFormScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_endDate.compareTo(_startDate) < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.')),
+      );
+      return;
+    }
 
     setState(() => _isSaving = true);
     final percent = int.tryParse(_discountPercentController.text) ?? 0;
@@ -118,7 +124,9 @@ class _PromotionFormScreenState extends ConsumerState<PromotionFormScreen> {
   Widget build(BuildContext context) {
     final currentUser = ref.watch(authViewModelProvider).user;
     final isAdmin = currentUser?.role == 'Admin' || currentUser?.role == 'SuperAdmin';
-    final isOwnerPromo = widget.promo != null ? widget.promo?.ownerId != null : !isAdmin;
+    final isOwnerPromo = widget.promo != null
+        ? widget.promo?.ownerId?.isNotEmpty == true
+        : !isAdmin;
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Sửa khuyến mãi' : 'Tạo khuyến mãi mới'),
@@ -196,6 +204,13 @@ class _PromotionFormScreenState extends ConsumerState<PromotionFormScreen> {
                       controller: _maxDiscountController,
                       decoration: const InputDecoration(labelText: 'Giảm tối đa (0 = kgh)', border: OutlineInputBorder()),
                       keyboardType: TextInputType.number,
+                      validator: (v) {
+                        final amount = double.tryParse(v ?? '');
+                        if (amount == null || !amount.isFinite || amount < 0) {
+                          return 'Nhập số tiền >= 0';
+                        }
+                        return null;
+                      },
                     ),
                   ),
                 ],

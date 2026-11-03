@@ -6,6 +6,23 @@ class PromotionRepository {
 
   PromotionRepository(this._firebaseService);
 
+  String? _validationError(PromotionModel promo) {
+    if (promo.code.trim().isEmpty) return 'Vui lòng nhập mã khuyến mãi.';
+    if (promo.discountPercent < 1 || promo.discountPercent > 100) {
+      return 'Phần trăm giảm phải từ 1 đến 100.';
+    }
+    if (!promo.maxDiscount.isFinite || promo.maxDiscount < 0) {
+      return 'Giảm tối đa phải lớn hơn hoặc bằng 0.';
+    }
+    if (promo.quantity < 0) return 'Số lượng mã không được âm.';
+    final start = DateTime.tryParse(promo.startDate);
+    final end = DateTime.tryParse(promo.endDate);
+    if (start == null || end == null || end.isBefore(start)) {
+      return 'Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.';
+    }
+    return null;
+  }
+
   Future<List<PromotionModel>> getAllPromotions() async {
     final snapshot = await _firebaseService.promotionsCollection.get();
     final list = snapshot.docs
@@ -32,14 +49,12 @@ class PromotionRepository {
   }
 
   Future<(bool, String)> createPromotion(PromotionModel promo) async {
+    final error = _validationError(promo);
+    if (error != null) return (false, error);
     final existing = await getPromotionByCode(promo.code);
     if (existing != null) {
       return (false, 'Mã khuyến mãi đã tồn tại.');
     }
-    if (promo.endDate.compareTo(promo.startDate) < 0) {
-      return (false, 'Ngày kết thúc phải sau ngày bắt đầu.');
-    }
-
     final docRef = _firebaseService.promotionsCollection.doc();
     final toSave = promo.copyWith(id: docRef.id, code: promo.code.trim().toUpperCase());
     await docRef.set(toSave.toMap());
@@ -47,6 +62,8 @@ class PromotionRepository {
   }
 
   Future<(bool, String)> updatePromotion(PromotionModel promo) async {
+    final error = _validationError(promo);
+    if (error != null) return (false, error);
     final snapshot = await _firebaseService.promotionsCollection
         .where('code', isEqualTo: promo.code.trim().toUpperCase())
         .get();
@@ -56,7 +73,9 @@ class PromotionRepository {
       return (false, 'Mã khuyến mãi đã tồn tại.');
     }
 
-    await _firebaseService.promotionsCollection.doc(promo.id).update(promo.toMap());
+    await _firebaseService.promotionsCollection.doc(promo.id).update(
+      promo.copyWith(code: promo.code.trim().toUpperCase()).toMap(),
+    );
     return (true, 'Cập nhật khuyến mãi thành công.');
   }
 
