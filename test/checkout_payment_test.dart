@@ -86,7 +86,7 @@ void main() {
     test('1 diem thuong quy doi thanh 100 dong giam gia', () {
       const pointsUsed = 150;
       const pointRate = 100.0;
-      final discount = pointsUsed * pointRate;
+      const discount = pointsUsed * pointRate;
       expect(discount, 15000.0);
     });
 
@@ -102,8 +102,8 @@ void main() {
       const amount1 = 120000.0;
       const amount2 = 180000.0;
 
-      final canPay1 = walletBalance >= amount1;
-      final canPay2 = walletBalance >= amount2;
+      const canPay1 = walletBalance >= amount1;
+      const canPay2 = walletBalance >= amount2;
 
       expect(canPay1, isTrue);
       expect(canPay2, isFalse);

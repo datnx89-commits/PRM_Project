@@ -1,4 +1,6 @@
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/formatters.dart';
@@ -62,6 +64,7 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildDigitalTicketCard(b),
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -315,6 +318,179 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDigitalTicketCard(BookingModel b) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.teal.shade700, Colors.teal.shade900],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.teal.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.confirmation_num_outlined, color: Colors.amber, size: 24),
+                    const SizedBox(width: 8),
+                    Text(
+                      'VÉ ĐẶT SÂN ĐIỆN TỬ',
+                      style: TextStyle(
+                        color: Colors.amber.shade200,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                _buildStatusBadge(b.status),
+              ],
+            ),
+          ),
+          const Divider(color: Colors.white24, height: 1),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  b.effectiveFieldName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_today, color: Colors.white70, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      Formatters.dateString(b.effectiveBookingDate),
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                    const SizedBox(width: 16),
+                    const Icon(Icons.access_time, color: Colors.white70, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      b.slotTimeText,
+                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                if (b.userFullName != null || b.userPhone != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Khách hàng: ${b.userFullName ?? ''} ${b.userPhone != null ? "• ${b.userPhone}" : ""}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              Container(
+                width: 12,
+                height: 24,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(12),
+                    bottomRight: Radius.circular(12),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final count = (constraints.constrainWidth() / 10).floor();
+                    return Flex(
+                      direction: Axis.horizontal,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(
+                        count,
+                        (_) => const SizedBox(
+                          width: 5,
+                          height: 1,
+                          child: DecoratedBox(decoration: BoxDecoration(color: Colors.white38)),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Container(
+                width: 12,
+                height: 24,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    bottomLeft: Radius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'MÃ SOÁT VÉ / CHECK-IN',
+                      style: TextStyle(color: Colors.white54, fontSize: 10, letterSpacing: 1),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      b.ticketCode,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  tooltip: 'Sao chép mã vé',
+                  icon: const Icon(Icons.copy, color: Colors.amber, size: 20),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: b.ticketCode));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Đã sao chép mã vé: ${b.ticketCode}')),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
