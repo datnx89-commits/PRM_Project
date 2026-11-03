@@ -108,6 +108,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             child: StreamBuilder<List<ChatMessageModel>>(
               stream: repo.getMessagesStream(widget.conversation.id),
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Không tải được tin nhắn: ${snapshot.error}'));
+                }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
