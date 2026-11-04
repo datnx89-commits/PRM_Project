@@ -35,6 +35,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _markRead() {
+    if (!mounted) return;
     final user = ref.read(authViewModelProvider).user;
     if (user != null) {
       ref.read(chatRepositoryProvider).markMessagesAsRead(widget.conversation.id, user.id);
@@ -125,7 +126,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   );
                 }
 
-                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                // Tin nhắn đến lúc đang mở màn chat cũng tính là đã đọc
+                final hasUnread = messages.any((m) => !m.isRead && m.senderId != currentUser?.id);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _scrollToBottom();
+                  if (hasUnread) _markRead();
+                });
 
                 return ListView.builder(
                   controller: _scrollController,
