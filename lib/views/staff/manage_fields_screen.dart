@@ -143,6 +143,8 @@ class ManageFieldsScreen extends ConsumerWidget {
                                     icon: const Icon(Icons.delete, color: Colors.red),
                                     tooltip: 'Xóa sân',
                                     onPressed: () async {
+                                      // Lấy messenger trước khi await: lúc xóa danh sách bị thay bằng loading nên context của thẻ sân bị hủy
+                                      final messenger = ScaffoldMessenger.of(context);
                                       final confirm = await showDialog<bool>(
                                         context: context,
                                         builder: (ctx) => AlertDialog(
@@ -156,9 +158,7 @@ class ManageFieldsScreen extends ConsumerWidget {
                                       );
                                       if (confirm == true) {
                                         final (ok, msg) = await vm.deleteOrClose(f.id);
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-                                        }
+                                        messenger.showSnackBar(SnackBar(content: Text(msg)));
                                       }
                                     },
                                   ),

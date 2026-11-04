@@ -494,10 +494,9 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
                                           OutlinedButton(
                                             style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
                                             onPressed: () async {
+                                              final messenger = ScaffoldMessenger.of(context);
                                               final (ok, msg) = await vm.rejectCashPayment(b.id, reason: 'Chủ sân từ chối thu tiền');
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-                                              }
+                                              messenger.showSnackBar(SnackBar(content: Text(msg)));
                                             },
                                             child: const Text('Từ chối thu tiền'),
                                           ),
@@ -509,10 +508,9 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
                                               foregroundColor: Colors.white,
                                             ),
                                             onPressed: () async {
+                                              final messenger = ScaffoldMessenger.of(context);
                                               final (ok, msg) = await vm.confirmCashPayment(b.id);
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-                                              }
+                                              messenger.showSnackBar(SnackBar(content: Text(msg)));
                                             },
                                             label: const Text('Đã thu tiền mặt'),
                                           ),
@@ -529,10 +527,9 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
                                           if (b.status == BookingStatus.pending) ...[
                                             ElevatedButton(
                                               onPressed: () async {
+                                                final messenger = ScaffoldMessenger.of(context);
                                                 final (ok, msg) = await vm.confirmBooking(b.id);
-                                                if (context.mounted) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-                                                }
+                                                messenger.showSnackBar(SnackBar(content: Text(msg)));
                                               },
                                               child: const Text('Xác nhận'),
                                             ),
@@ -541,10 +538,9 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
                                           OutlinedButton(
                                             style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
                                             onPressed: () async {
+                                              final messenger = ScaffoldMessenger.of(context);
                                               final (ok, msg) = await vm.cancelBooking(b.id);
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-                                              }
+                                              messenger.showSnackBar(SnackBar(content: Text(msg)));
                                             },
                                             child: const Text('Hủy đơn'),
                                           ),
