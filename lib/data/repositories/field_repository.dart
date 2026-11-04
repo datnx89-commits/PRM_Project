@@ -122,7 +122,7 @@ class FieldRepository {
         endTime: endStr,
         isActive: true,
       );
-      batch.set(slotDoc, slot.toMap());
+      batch.set(slotDoc, slot.copyWith(price: _slotPriceFor(newField, slot)).toMap());
     }
     await batch.commit();
 
@@ -131,7 +131,23 @@ class FieldRepository {
 
   Future<void> updateField(FieldModel field) async {
     await _firebaseService.fieldsCollection.doc(field.id).update(field.toMap());
+
+    // Đồng bộ giá cơ bản của các khung giờ theo giá mới của sân
+    final slots = await _firebaseService.timeSlotsCollection
+        .where('fieldId', isEqualTo: field.id)
+        .get();
+    if (slots.docs.isEmpty) return;
+    final batch = _firebaseService.firestore.batch();
+    for (var d in slots.docs) {
+      final slot = TimeSlotModel.fromMap(d.data(), d.id);
+      batch.update(d.reference, {'price': _slotPriceFor(field, slot)});
+    }
+    await batch.commit();
   }
+
+  // Giờ cao điểm (17h - 21h) lấy giá cao điểm, còn lại lấy giá thường
+  double _slotPriceFor(FieldModel field, TimeSlotModel slot) =>
+      slot.isPeak ? field.peakPricePerHour : field.pricePerHour;
 
   Future<bool> deleteOrCloseField(String fieldId) async {
     final bookingsSnapshot = await _firebaseService.bookingsCollection
