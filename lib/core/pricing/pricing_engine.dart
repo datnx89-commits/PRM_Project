@@ -72,12 +72,15 @@ class PricingEngine {
     DateTime date,
     List<FieldPricingRuleModel> rules,
   ) {
+    // Fallback: nếu slot có gắn isPeak thì dùng peakPricePerHour, còn lại dùng pricePerHour
+    final basePrice = slot.isPeak ? field.peakPricePerHour : field.pricePerHour;
     final rule = findBestRule(rules, slot, date);
     if (rule != null) {
-      return rule.price;
+      // Rule có giá cố định thì dùng giá đó, không thì nhân hệ số lên giá cơ bản (làm tròn nghìn đồng)
+      if (rule.price > 0) return rule.price;
+      return ((basePrice * rule.priceMultiplier) / 1000.0).round() * 1000.0;
     }
-    // Fallback: nếu slot có gắn isPeak thì dùng peakPricePerHour, còn lại dùng pricePerHour
-    return slot.isPeak ? field.peakPricePerHour : field.pricePerHour;
+    return basePrice;
   }
 
   /// Tính giá cuối cùng của 1 slot sau khi nhân hệ số ngày vàng (làm tròn nghìn đồng)
