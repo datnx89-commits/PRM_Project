@@ -176,7 +176,11 @@ class _FieldFormScreenState extends ConsumerState<FieldFormScreen> {
                       controller: _priceController,
                       decoration: const InputDecoration(labelText: 'Giá thường /h (VND) *', border: OutlineInputBorder()),
                       keyboardType: TextInputType.number,
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Nhập giá' : null,
+                      validator: (v) {
+                        final n = double.tryParse(v?.trim() ?? '');
+                        if (n == null || n <= 0) return 'Nhập giá hợp lệ (> 0)';
+                        return null;
+                      },
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -185,6 +189,12 @@ class _FieldFormScreenState extends ConsumerState<FieldFormScreen> {
                       controller: _peakPriceController,
                       decoration: const InputDecoration(labelText: 'Giá cao điểm /h', border: OutlineInputBorder()),
                       keyboardType: TextInputType.number,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null;
+                        final n = double.tryParse(v.trim());
+                        if (n == null || n < 0) return 'Giá không hợp lệ';
+                        return null;
+                      },
                     ),
                   ),
                 ],
