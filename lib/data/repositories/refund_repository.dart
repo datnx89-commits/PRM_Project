@@ -16,12 +16,41 @@ class RefundRepository {
     }
 
     final snapshot = await query.get();
-    final list = snapshot.docs
+    var list = snapshot.docs
         .map((d) => RefundRequestModel.fromMap(d.data() as Map<String, dynamic>, d.id))
         .toList();
 
+    // Yêu cầu tạo lúc khách chưa nhập STK -> lấy STK mới nhất từ hồ sơ khách
+    list = await Future.wait(list.map(_fillBankInfo));
+
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list;
+  }
+
+  Future<RefundRequestModel> _fillBankInfo(RefundRequestModel req) async {
+    final hasBank = (req.bankAccountNumber ?? '').trim().isNotEmpty;
+    if (hasBank || !req.isPending) return req;
+    try {
+      final userDoc = await _firebase.usersCollection.doc(req.userId).get();
+      final data = userDoc.data();
+      if (data == null) return req;
+      final number = (data['bankAccountNumber'] as String?)?.trim() ?? '';
+      if (number.isEmpty) return req;
+      final bankName = data['bankName'] as String?;
+      final holder = data['bankAccountHolder'] as String?;
+      await _firebase.refundRequestsCollection.doc(req.id).update({
+        'bankName': bankName,
+        'bankAccountNumber': number,
+        'bankAccountHolder': holder,
+      });
+      return req.copyWith(
+        bankName: bankName,
+        bankAccountNumber: number,
+        bankAccountHolder: holder,
+      );
+    } catch (_) {
+      return req;
+    }
   }
 
   /// Admin/Owner đánh dấu đã chuyển khoản hoàn tiền thành công
