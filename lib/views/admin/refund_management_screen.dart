@@ -19,6 +19,7 @@ class _RefundManagementScreenState
     extends ConsumerState<RefundManagementScreen> {
   String _selectedStatus = RefundStatus.pending;
   bool _isLoading = false;
+  int _loadRequestId = 0;
   List<RefundRequestModel> _refunds = [];
   final _currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
   final _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
@@ -30,21 +31,28 @@ class _RefundManagementScreenState
   }
 
   Future<void> _loadRefunds() async {
+    final requestId = ++_loadRequestId;
+    final selectedStatus = _selectedStatus;
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final repo = ref.read(refundRepositoryProvider);
       final list = await repo.getRefundRequests(
-        status: _selectedStatus == 'ALL' ? null : _selectedStatus,
+        status: selectedStatus == 'ALL' ? null : selectedStatus,
       );
-      setState(() => _refunds = list);
+      if (mounted && requestId == _loadRequestId) {
+        setState(() => _refunds = list);
+      }
     } catch (e) {
-      if (mounted) {
+      if (mounted && requestId == _loadRequestId) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Lỗi tải danh sách hoàn tiền: $e')),
         );
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted && requestId == _loadRequestId) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -92,23 +100,27 @@ class _RefundManagementScreenState
       ),
     );
 
-    if (result == true) {
+    if (result == true && mounted) {
       final user = ref.read(authViewModelProvider).user;
       final repo = ref.read(refundRepositoryProvider);
-      final (success, msg) = await repo.markTransferred(
-        refundRequestId: req.id,
-        processedById: user?.id ?? 'admin',
-        note: noteController.text.trim(),
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: success ? Colors.green : Colors.red,
-          ),
+      try {
+        final (success, msg) = await repo.markTransferred(
+          refundRequestId: req.id,
+          processedById: user?.id ?? 'admin',
+          note: noteController.text.trim(),
         );
-        if (success) _loadRefunds();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg), backgroundColor: success ? Colors.green : Colors.red),
+          );
+          if (success) _loadRefunds();
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Không thể cập nhật yêu cầu hoàn tiền. Vui lòng thử lại.')),
+          );
+        }
       }
     }
   }
@@ -163,23 +175,27 @@ class _RefundManagementScreenState
       ),
     );
 
-    if (result == true) {
+    if (result == true && mounted) {
       final user = ref.read(authViewModelProvider).user;
       final repo = ref.read(refundRepositoryProvider);
-      final (success, msg) = await repo.rejectRefund(
-        refundRequestId: req.id,
-        processedById: user?.id ?? 'admin',
-        note: noteController.text.trim(),
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: success ? Colors.green : Colors.red,
-          ),
+      try {
+        final (success, msg) = await repo.rejectRefund(
+          refundRequestId: req.id,
+          processedById: user?.id ?? 'admin',
+          note: noteController.text.trim(),
         );
-        if (success) _loadRefunds();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg), backgroundColor: success ? Colors.green : Colors.red),
+          );
+          if (success) _loadRefunds();
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Không thể cập nhật yêu cầu hoàn tiền. Vui lòng thử lại.')),
+          );
+        }
       }
     }
   }
