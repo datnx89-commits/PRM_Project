@@ -48,6 +48,46 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
     }
   }
 
+  void _confirmCancelTicket(BuildContext context, BookingModel b) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận hủy đặt sân'),
+        content: Text(
+          'Bạn có chắc chắn muốn hủy vé ${b.ticketCode} (${b.effectiveFieldName})? '
+          'Hành động này sẽ giải phóng khung giờ và hoàn tiền vào ví nếu bạn đã thanh toán.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Đóng'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final (success, msg) = await ref
+                  .read(myBookingsViewModelProvider.notifier)
+                  .cancelBooking(b.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(msg),
+                    backgroundColor: success ? Colors.green : Colors.red,
+                  ),
+                );
+                if (success) {
+                  Navigator.pop(context);
+                }
+              }
+            },
+            child: const Text('Xác nhận hủy'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final b = widget.booking;
@@ -315,6 +355,64 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
                     ),
                   ),
                 ),
+            ],
+
+            if (b.status == BookingStatus.pending || b.status == BookingStatus.confirmed) ...[
+              const SizedBox(height: 18),
+              Card(
+                elevation: 1,
+                color: Colors.red.shade50,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.red.shade700, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Chính sách hủy đơn',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red.shade800),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Bạn chỉ được phép hủy sân trước giờ bắt đầu tối thiểu 2 giờ. '
+                        'Nếu đã thanh toán qua ví, số tiền sẽ được tự động hoàn ngay vào ví của bạn.',
+                        style: TextStyle(fontSize: 12, color: Colors.red.shade900),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+                          label: Text(
+                            b.isCancellableWithPolicy()
+                                ? 'Hủy đặt sân (Hoàn tiền tự động)'
+                                : 'Đã quá hạn hủy (dưới 2 giờ)',
+                            style: TextStyle(
+                              color: b.isCancellableWithPolicy() ? Colors.red : Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: b.isCancellableWithPolicy() ? Colors.red : Colors.grey.shade400,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: b.isCancellableWithPolicy()
+                              ? () => _confirmCancelTicket(context, b)
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ],
         ),
