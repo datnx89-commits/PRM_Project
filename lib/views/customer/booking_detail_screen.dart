@@ -169,12 +169,20 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
                       ),
                       const SizedBox(height: 6),
                     ],
-                    if (b.promotionCode != null && b.promotionCode!.isNotEmpty) ...[
+                    if (b.discountAmount > 0) ...[
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Khuyến mãi (${b.promotionCode}):', style: const TextStyle(color: Colors.green)),
-                          Text('-${Formatters.currency(b.discountAmount)}', style: const TextStyle(color: Colors.green)),
+                          Text(
+                            b.promotionCode != null && b.promotionCode!.isNotEmpty
+                                ? 'Ưu đãi voucher (${b.promotionCode}):'
+                                : 'Giảm giá / Ưu đãi hạng:',
+                            style: const TextStyle(color: Colors.green),
+                          ),
+                          Text(
+                            '-${Formatters.currency(b.discountAmount)}',
+                            style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 6),
