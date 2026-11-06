@@ -67,7 +67,8 @@ final maintenanceRepositoryProvider = Provider<MaintenanceRepository>((ref) {
 
 final refundRepositoryProvider = Provider<RefundRepository>((ref) {
   final firebaseService = ref.watch(firebaseServiceProvider);
-  return RefundRepository(firebaseService);
+  final walletRepo = ref.watch(walletRepositoryProvider);
+  return RefundRepository(firebaseService, walletRepo);
 });
 
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
