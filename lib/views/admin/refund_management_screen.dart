@@ -125,6 +125,80 @@ class _RefundManagementScreenState
     }
   }
 
+  Future<void> _refundToWallet(RefundRequestModel req) async {
+    final noteController = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hoàn tiền vào Ví SportsBook'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Booking: #${req.bookingId.length > 8 ? req.bookingId.substring(0, 8) : req.bookingId}'),
+            Text('Khách hàng: ${req.userName ?? req.userId}'),
+            const SizedBox(height: 4),
+            Text(
+              'Cộng vào ví: ${_currencyFormat.format(req.amount)}',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Tiền được cộng ngay vào ví của khách, khách nhận thông báo realtime.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteController,
+              decoration: const InputDecoration(
+                labelText: 'Ghi chú (tùy chọn)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Cộng vào ví'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true && mounted) {
+      final user = ref.read(authViewModelProvider).user;
+      final repo = ref.read(refundRepositoryProvider);
+      try {
+        final (success, msg) = await repo.refundToWallet(
+          refundRequestId: req.id,
+          processedById: user?.id ?? 'admin',
+          note: noteController.text.trim(),
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg), backgroundColor: success ? Colors.green : Colors.red),
+          );
+          if (success) _loadRefunds();
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Không thể hoàn tiền vào ví. Vui lòng thử lại.')),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _rejectRefund(RefundRequestModel req) async {
     final noteController = TextEditingController();
     final result = await showDialog<bool>(
@@ -375,8 +449,10 @@ class _RefundManagementScreenState
                                     ],
                                     if (req.isPending) ...[
                                       const SizedBox(height: 12),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
+                                      Wrap(
+                                        alignment: WrapAlignment.end,
+                                        spacing: 8,
+                                        runSpacing: 8,
                                         children: [
                                           OutlinedButton.icon(
                                             onPressed: () => _rejectRefund(req),
@@ -387,7 +463,15 @@ class _RefundManagementScreenState
                                               side: const BorderSide(color: Colors.red),
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
+                                          ElevatedButton.icon(
+                                            onPressed: () => _refundToWallet(req),
+                                            icon: const Icon(Icons.account_balance_wallet, size: 18),
+                                            label: const Text('Hoàn vào ví'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.purple,
+                                              foregroundColor: Colors.white,
+                                            ),
+                                          ),
                                           ElevatedButton.icon(
                                             onPressed: () => _confirmTransfer(req),
                                             icon: const Icon(Icons.check_circle_outline, size: 18),
