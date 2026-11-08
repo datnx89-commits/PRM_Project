@@ -30,12 +30,13 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
 
     // Lấy danh sách sân
     final ownerId = (user.role == UserRole.admin || user.role == UserRole.superAdmin) ? null : user.id;
-    final fields = await fieldRepo.getFields(ownerId: ownerId);
+    final allFields = await fieldRepo.getFields(ownerId: ownerId);
+    final fields = allFields.where((f) => f.status == FieldStatus.active).toList();
 
     if (fields.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Chưa có sân bóng nào để đặt lịch! Vui lòng tạo sân trước.')),
+          const SnackBar(content: Text('Chưa có sân đang hoạt động để đặt lịch! Vui lòng tạo hoặc mở lại sân.')),
         );
       }
       return;
@@ -48,6 +49,7 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
     List<TimeSlotModel> availableSlots = [];
     TimeSlotModel? selectedSlot;
     bool isLoadingSlots = false;
+    bool hasLoadedSlots = false;
     double calculatedPrice = 0;
 
     final nameCtrl = TextEditingController();
@@ -64,11 +66,13 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) {
           Future<void> loadSlots() async {
+            hasLoadedSlots = true;
             setModalState(() => isLoadingSlots = true);
             try {
               final slots = await slotRepo.getTimeSlots(fieldId: selectedField.id);
               availableSlots = slots.where((s) => s.isActive).toList();
               selectedSlot = availableSlots.isNotEmpty ? availableSlots.first : null;
+              calculatedPrice = 0;
               if (selectedSlot != null) {
                 final price = await pricingRepo.calculatePrice(
                   fieldId: selectedField.id,
@@ -82,7 +86,7 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
             setModalState(() => isLoadingSlots = false);
           }
 
-          if (availableSlots.isEmpty && !isLoadingSlots) {
+          if (!hasLoadedSlots) {
             loadSlots();
           }
 
