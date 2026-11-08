@@ -73,9 +73,9 @@ class _RefundManagementScreenState
               style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
             ),
             const SizedBox(height: 8),
-            Text('Ngân hàng: ${req.bankName}'),
-            Text('Số TK: ${req.bankAccountNumber}'),
-            Text('Chủ TK: ${req.bankAccountHolder}'),
+            Text('Ngân hàng: ${_orMissing(req.bankName)}'),
+            Text('Số TK: ${_orMissing(req.bankAccountNumber)}'),
+            Text('Chủ TK: ${_orMissing(req.bankAccountHolder)}'),
             const SizedBox(height: 12),
             TextField(
               controller: noteController,
@@ -124,6 +124,9 @@ class _RefundManagementScreenState
       }
     }
   }
+
+  String _orMissing(String? v) =>
+      (v == null || v.trim().isEmpty) ? 'Chưa cung cấp' : v;
 
   Future<void> _refundToWallet(RefundRequestModel req) async {
     final noteController = TextEditingController();
@@ -395,7 +398,7 @@ class _RefundManagementScreenState
                                       children: [
                                         const Icon(Icons.account_balance, size: 16, color: Colors.blueGrey),
                                         const SizedBox(width: 6),
-                                        Text('Ngân hàng: ${req.bankName}'),
+                                        Text('Ngân hàng: ${_orMissing(req.bankName)}'),
                                       ],
                                     ),
                                     Row(
@@ -403,7 +406,7 @@ class _RefundManagementScreenState
                                         const Icon(Icons.numbers, size: 16, color: Colors.blueGrey),
                                         const SizedBox(width: 6),
                                         Text(
-                                          'Số TK: ${req.bankAccountNumber}',
+                                          'Số TK: ${_orMissing(req.bankAccountNumber)}',
                                           style: const TextStyle(fontWeight: FontWeight.bold),
                                         ),
                                       ],
@@ -412,7 +415,7 @@ class _RefundManagementScreenState
                                       children: [
                                         const Icon(Icons.person, size: 16, color: Colors.blueGrey),
                                         const SizedBox(width: 6),
-                                        Text('Chủ TK: ${req.bankAccountHolder}'),
+                                        Text('Chủ TK: ${_orMissing(req.bankAccountHolder)}'),
                                       ],
                                     ),
                                     if (req.reason.isNotEmpty) ...[
