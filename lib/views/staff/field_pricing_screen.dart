@@ -8,6 +8,35 @@ import '../../data/models/golden_day_model.dart';
 import '../../data/models/time_slot_model.dart';
 import '../../data/providers.dart';
 
+/// Kiểm tra dữ liệu quy tắc giá, trả về thông báo lỗi hoặc null nếu hợp lệ
+String? validatePricingRule({
+  required String name,
+  required String startHour,
+  required String endHour,
+  required String multiplier,
+  required String fixedPrice,
+}) {
+  if (name.trim().isEmpty) return 'Vui lòng nhập tên quy tắc.';
+
+  final start = int.tryParse(startHour.trim());
+  final end = int.tryParse(endHour.trim());
+  if (start == null || end == null || start < 0 || start > 23 || end < 0 || end > 23) {
+    return 'Giờ phải là số từ 0 đến 23.';
+  }
+  if (start >= end) return 'Giờ bắt đầu phải nhỏ hơn giờ kết thúc.';
+
+  final fixedText = fixedPrice.trim();
+  if (fixedText.isNotEmpty) {
+    final fixed = double.tryParse(fixedText);
+    if (fixed == null || fixed <= 0) return 'Giá cố định phải là số lớn hơn 0.';
+    return null;
+  }
+
+  final mult = double.tryParse(multiplier.trim());
+  if (mult == null || mult <= 0) return 'Hệ số giá phải là số lớn hơn 0.';
+  return null;
+}
+
 class FieldPricingScreen extends ConsumerStatefulWidget {
   final FieldModel field;
 
@@ -104,6 +133,7 @@ class _FieldPricingScreenState extends ConsumerState<FieldPricingScreen>
     String dayType = PricingDayType.all;
     int? startMonth;
     int? endMonth;
+    String? ruleError;
 
     final result = await showDialog<bool>(
       context: context,
@@ -176,6 +206,10 @@ class _FieldPricingScreenState extends ConsumerState<FieldPricingScreen>
                     border: OutlineInputBorder(),
                   ),
                 ),
+                if (ruleError != null) ...[
+                  const SizedBox(height: 10),
+                  Text(ruleError!, style: const TextStyle(color: Colors.red)),
+                ],
               ],
             ),
           ),
@@ -183,7 +217,20 @@ class _FieldPricingScreenState extends ConsumerState<FieldPricingScreen>
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-              onPressed: () => Navigator.pop(ctx, true),
+              onPressed: () {
+                final error = validatePricingRule(
+                  name: nameCtrl.text,
+                  startHour: startHourCtrl.text,
+                  endHour: endHourCtrl.text,
+                  multiplier: multiplierCtrl.text,
+                  fixedPrice: fixedPriceCtrl.text,
+                );
+                if (error != null) {
+                  setDState(() => ruleError = error);
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
               child: const Text('Lưu quy tắc'),
             ),
           ],
@@ -340,6 +387,23 @@ class _FieldPricingScreenState extends ConsumerState<FieldPricingScreen>
   }
 
   Future<void> _deleteGoldenDay(String gdId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận xóa'),
+        content: const Text('Bạn có chắc muốn xóa ngày vàng này?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
     final repo = ref.read(pricingRepositoryProvider);
     final (ok, msg) = await repo.deleteGoldenDay(gdId);
     if (mounted) {
