@@ -125,6 +125,9 @@ class _RefundManagementScreenState
     }
   }
 
+  bool _hasBankInfo(RefundRequestModel req) =>
+      (req.bankAccountNumber ?? '').trim().isNotEmpty;
+
   String _orMissing(String? v) =>
       (v == null || v.trim().isEmpty) ? 'Chưa cung cấp' : v;
 
@@ -451,6 +454,13 @@ class _RefundManagementScreenState
                                         ),
                                     ],
                                     if (req.isPending) ...[
+                                      if (!_hasBankInfo(req)) ...[
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Khách chưa nhập STK: hãy hoàn vào ví, hoặc nhắc khách cập nhật STK trong màn Ví.',
+                                          style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                                        ),
+                                      ],
                                       const SizedBox(height: 12),
                                       Wrap(
                                         alignment: WrapAlignment.end,
@@ -476,7 +486,7 @@ class _RefundManagementScreenState
                                             ),
                                           ),
                                           ElevatedButton.icon(
-                                            onPressed: () => _confirmTransfer(req),
+                                            onPressed: _hasBankInfo(req) ? () => _confirmTransfer(req) : null,
                                             icon: const Icon(Icons.check_circle_outline, size: 18),
                                             label: const Text('Xác nhận đã chuyển'),
                                             style: ElevatedButton.styleFrom(
