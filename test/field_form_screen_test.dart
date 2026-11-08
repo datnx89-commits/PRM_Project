@@ -139,6 +139,10 @@ void main() {
         city: 'TP.HCM',
         pricePerHour: 100000,
         peakPricePerHour: 150000,
+        latitude: 21.0,
+        longitude: 105.8,
+        images: const ['a.png'],
+        averageRating: 4.5,
         createdAt: DateTime(2026, 1, 1),
       ),
     );
@@ -152,5 +156,11 @@ void main() {
     expect(vm.saved?.ownerId, 'o1');
     expect(vm.saved?.pricePerHour, 250000);
     expect(vm.saved?.peakPricePerHour, 150000);
+    // Cac du lieu khong co tren form phai duoc giu nguyen
+    expect(vm.saved?.averageRating, 4.5);
+    expect(vm.saved?.images, ['a.png']);
+    expect(vm.saved?.latitude, 21.0);
+    expect(vm.saved?.longitude, 105.8);
+    expect(vm.saved?.fieldTypeName, 'Bóng đá');
   });
 }

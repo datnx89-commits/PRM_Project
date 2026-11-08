@@ -76,10 +76,14 @@ class _FieldFormScreenState extends ConsumerState<FieldFormScreen> {
     final peakPrice = double.tryParse(_peakPriceController.text) ?? price;
     final cashback = double.tryParse(_cashbackController.text) ?? 0.0;
 
+    final fieldTypes = ref.read(fieldManageViewModelProvider).fieldTypes;
+    final selectedTypes = fieldTypes.where((t) => t.id == _selectedTypeId);
+
     final field = FieldModel(
       id: widget.field?.id ?? '',
       fieldName: _nameController.text.trim(),
       fieldTypeId: _selectedTypeId!,
+      fieldTypeName: selectedTypes.isNotEmpty ? selectedTypes.first.typeName : widget.field?.fieldTypeName,
       ownerId: widget.field?.ownerId ?? '',
       address: _addressController.text.trim(),
       ward: _wardController.text.trim(),
@@ -92,6 +96,11 @@ class _FieldFormScreenState extends ConsumerState<FieldFormScreen> {
       cashbackPercent: cashback.toInt().clamp(0, 50),
       description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
       status: _status,
+      // Giữ lại các dữ liệu không có trên form khi cập nhật sân
+      latitude: widget.field?.latitude,
+      longitude: widget.field?.longitude,
+      images: widget.field?.images ?? const [],
+      averageRating: widget.field?.averageRating ?? 0.0,
       createdAt: widget.field?.createdAt ?? DateTime.now(),
     );
 
