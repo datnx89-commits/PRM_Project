@@ -10,6 +10,7 @@ import '../../data/providers.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/my_bookings_viewmodel.dart';
 import 'my_bookings_screen.dart';
+import 'wallet_screen.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   final String? bookingId;
@@ -111,25 +112,51 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   double get _finalAmount => (widget.totalAmount - _pointDiscount).clamp(0.0, double.infinity);
 
   Future<void> _processPayment() async {
-    setState(() => _isProcessing = true);
-    final (success, msg) = await ref
-        .read(myBookingsViewModelProvider.notifier)
-        .payBookings(
-          widget.effectiveBookingIds,
-          _selectedMethod,
-          pointsToUse: _usePoints ? _pointsToUse : 0,
-        );
-
-    if (mounted) {
-      setState(() => _isProcessing = false);
+    if (_isProcessing) return;
+    if (_selectedMethod == PaymentMethod.wallet && (_wallet?.balance ?? 0.0) < _finalAmount) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg)),
+        const SnackBar(
+          content: Text('Số dư ví không đủ để thanh toán. Vui lòng nạp thêm tiền hoặc chọn phương thức khác.'),
+          backgroundColor: Colors.red,
+        ),
       );
-      if (success) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
-          (route) => route.isFirst,
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+    try {
+      final (success, msg) = await ref
+          .read(myBookingsViewModelProvider.notifier)
+          .payBookings(
+            widget.effectiveBookingIds,
+            _selectedMethod,
+            pointsToUse: _usePoints ? _pointsToUse : 0,
+          );
+
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+        if (success) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+            (route) => route.isFirst,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi kết nối khi xử lý thanh toán: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -248,8 +275,25 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                       ),
                       if (_usePoints) ...[
                         const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Quy đổi: $_pointsToUse điểm = -${Formatters.currency(_pointDiscount)}',
+                              style: const TextStyle(fontSize: 12, color: Colors.blueGrey, fontWeight: FontWeight.w600),
+                            ),
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              onPressed: () => setState(() => _pointsToUse = _maxPoints),
+                              child: const Text('Dùng tối đa', style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                        ),
                         Slider(
-                          value: _pointsToUse.toDouble(),
+                          value: _pointsToUse.toDouble().clamp(0.0, _maxPoints.toDouble()),
                           min: 0,
                           max: _maxPoints.toDouble(),
                           divisions: _maxPoints > 10 ? (_maxPoints / 10).round() : 1,
@@ -305,8 +349,27 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                       const Text('Sân này không chấp nhận thanh toán bằng ví.', style: TextStyle(color: Colors.red, fontSize: 12))
                     else if (isWalletLocked)
                       const Text('Ví đang bị khóa bởi quản trị viên.', style: TextStyle(color: Colors.red, fontSize: 12))
-                    else if (isWalletInsufficient)
+                    else if (isWalletInsufficient) ...[
                       const Text('Số dư ví không đủ để thanh toán.', style: TextStyle(color: Colors.orange, fontSize: 12)),
+                      const SizedBox(height: 4),
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const WalletScreen()),
+                          ).then((_) => _loadData());
+                        },
+                        child: const Text(
+                          '⚡ Nạp thêm vào ví ngay',
+                          style: TextStyle(
+                            color: Colors.indigo,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 trailing: Radio<String>(

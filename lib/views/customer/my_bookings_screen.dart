@@ -74,149 +74,210 @@ class MyBookingsScreen extends ConsumerWidget {
     final state = ref.watch(myBookingsViewModelProvider);
     final vm = ref.read(myBookingsViewModelProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Lịch sử đặt sân'),
-      ),
-      drawer: const AppDrawer(),
-      body: RefreshIndicator(
-        onRefresh: vm.loadBookings,
-        child: state.isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : state.bookings.isEmpty
-                ? const Center(child: Text('Bạn chưa có đơn đặt sân nào.'))
-                : ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: state.bookings.length,
-                    itemBuilder: (context, index) {
-                      final b = state.bookings[index];
-                      final fieldName = b.effectiveFieldName;
-                      final dateStr = b.effectiveBookingDate;
-                      final slotTime = b.slotTimeText;
+    final upcoming = state.bookings
+        .where((b) => b.status == BookingStatus.pending || b.status == BookingStatus.confirmed)
+        .toList();
+    final completed = state.bookings
+        .where((b) => b.status == BookingStatus.completed)
+        .toList();
+    final cancelled = state.bookings
+        .where((b) => b.status == BookingStatus.cancelled)
+        .toList();
 
-                      return Card(
-                        elevation: 2,
-                        margin: const EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BookingDetailScreen(booking: b),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(14.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        fieldName,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Chip(
-                                      label: Text(
-                                        _getStatusText(b.status),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      backgroundColor: _getStatusColor(b.status),
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.calendar_today, size: 14, color: Colors.blueGrey),
-                                    const SizedBox(width: 4),
-                                    Text('Ngày: ${Formatters.dateString(dateStr)}'),
-                                    const SizedBox(width: 12),
-                                    const Icon(Icons.access_time, size: 14, color: Colors.blueGrey),
-                                    const SizedBox(width: 4),
-                                    Text('Giờ: $slotTime'),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          Formatters.currency(b.totalAmount),
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: Colors.redAccent,
-                                          ),
-                                        ),
-                                        _buildPaymentStatusBadge(b),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        if (!b.isPaid &&
-                                            !b.isCashPending &&
-                                            b.status != BookingStatus.cancelled)
-                                          ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.teal,
-                                              foregroundColor: Colors.white,
-                                            ),
-                                            onPressed: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => PaymentScreen(
-                                                    bookingId: b.id,
-                                                    totalAmount: b.totalAmount,
-                                                    fieldName: fieldName,
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                            child: const Text('Thanh toán'),
-                                          ),
-                                        if (b.status == BookingStatus.pending ||
-                                            b.status == BookingStatus.confirmed) ...[
-                                          const SizedBox(width: 6),
-                                          OutlinedButton(
-                                            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                                            onPressed: () => _showCancelDialog(context, ref, b.id),
-                                            child: const Text('Hủy'),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Vé & Lịch sử đặt sân'),
+          bottom: const TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: [
+              Tab(text: 'Tất cả'),
+              Tab(text: 'Sắp diễn ra'),
+              Tab(text: 'Hoàn thành'),
+              Tab(text: 'Đã hủy'),
+            ],
+          ),
+        ),
+        drawer: const AppDrawer(),
+        body: state.isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : TabBarView(
+                children: [
+                  _buildBookingList(state.bookings, ref, vm.loadBookings),
+                  _buildBookingList(upcoming, ref, vm.loadBookings, emptyMessage: 'Không có trận đấu nào sắp tới.'),
+                  _buildBookingList(completed, ref, vm.loadBookings, emptyMessage: 'Chưa có trận đấu nào hoàn thành.'),
+                  _buildBookingList(cancelled, ref, vm.loadBookings, emptyMessage: 'Không có đơn đặt sân nào bị hủy.'),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildBookingList(
+    List<dynamic> bookings,
+    WidgetRef ref,
+    Future<void> Function() onRefresh, {
+    String emptyMessage = 'Bạn chưa có đơn đặt sân nào.',
+  }) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: bookings.isEmpty
+          ? Center(
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Text(
+                    emptyMessage,
+                    style: const TextStyle(color: Colors.grey, fontSize: 15),
+                  ),
+                ),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: bookings.length,
+              itemBuilder: (context, index) {
+                final b = bookings[index];
+                final fieldName = b.effectiveFieldName;
+                final dateStr = b.effectiveBookingDate;
+                final slotTime = b.slotTimeText;
+
+                return Card(
+                  elevation: 2,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BookingDetailScreen(booking: b),
                         ),
                       );
                     },
+                    child: Padding(
+                      padding: const EdgeInsets.all(14.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  fieldName,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Chip(
+                                label: Text(
+                                  _getStatusText(b.status),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                backgroundColor: _getStatusColor(b.status),
+                                padding: EdgeInsets.zero,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(Icons.confirmation_number_outlined, size: 14, color: Colors.teal),
+                              const SizedBox(width: 4),
+                              Text(
+                                b.ticketCode,
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.teal),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(Icons.calendar_today, size: 14, color: Colors.blueGrey),
+                              const SizedBox(width: 4),
+                              Text('Ngày: ${Formatters.dateString(dateStr)}'),
+                              const SizedBox(width: 12),
+                              const Icon(Icons.access_time, size: 14, color: Colors.blueGrey),
+                              const SizedBox(width: 4),
+                              Text('Giờ: $slotTime'),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    Formatters.currency(b.totalAmount),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: Colors.redAccent,
+                                    ),
+                                  ),
+                                  _buildPaymentStatusBadge(b),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  if (!b.isPaid &&
+                                      !b.isCashPending &&
+                                      b.status != BookingStatus.cancelled)
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.teal,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => PaymentScreen(
+                                              bookingId: b.id,
+                                              totalAmount: b.totalAmount,
+                                              fieldName: fieldName,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: const Text('Thanh toán'),
+                                    ),
+                                  if (b.status == BookingStatus.pending ||
+                                      b.status == BookingStatus.confirmed) ...[
+                                    const SizedBox(width: 6),
+                                    OutlinedButton(
+                                      style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                                      onPressed: () => _showCancelDialog(context, ref, b.id),
+                                      child: const Text('Hủy'),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-      ),
+                );
+              },
+            ),
     );
   }
 

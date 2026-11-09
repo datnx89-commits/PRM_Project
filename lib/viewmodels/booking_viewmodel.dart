@@ -12,6 +12,27 @@ import '../data/repositories/pricing_repository.dart';
 import '../data/repositories/promotion_repository.dart';
 import 'auth_viewmodel.dart';
 
+/// Bảng bóc tách chi tiết giá đặt sân
+class BookingPriceBreakdown {
+  final double subtotal;
+  final double promoDiscount;
+  final double tierDiscount;
+  final double totalDiscount;
+  final double finalAmount;
+  final double goldenDayMultiplier;
+  final int estimatedPoints;
+
+  const BookingPriceBreakdown({
+    required this.subtotal,
+    required this.promoDiscount,
+    required this.tierDiscount,
+    required this.totalDiscount,
+    required this.finalAmount,
+    this.goldenDayMultiplier = 1.0,
+    this.estimatedPoints = 0,
+  });
+}
+
 class BookingProcessState {
   final String selectedDate;
   final List<String> bookedSlotIds;
@@ -91,6 +112,71 @@ class BookingProcessState {
     final subtotal = calculateSubtotal(field);
     final discount = calculateTotalDiscount(field, user);
     return (subtotal - discount).clamp(0.0, double.infinity);
+  }
+
+  /// Bóc tách toàn bộ bảng tính giá phục vụ hiển thị hóa đơn và xác nhận đặt sân
+  BookingPriceBreakdown getBreakdown(FieldModel field, UserModel? user) {
+    final sub = calculateSubtotal(field);
+    final pDisc = calculatePromoDiscount(field);
+    final tDisc = calculateTierDiscount(field, user);
+    final totDisc = calculateTotalDiscount(field, user);
+    final finalAmt = calculateTotal(field, user);
+    final mult = goldenDay?.priceMultiplier ?? 1.0;
+    final basePts = (finalAmt / 10000).floor();
+    final pointsMult = goldenDay?.pointsMultiplier ?? 1.0;
+    final estPts = (basePts * pointsMult).round();
+
+    return BookingPriceBreakdown(
+      subtotal: sub,
+      promoDiscount: pDisc,
+      tierDiscount: tDisc,
+      totalDiscount: totDisc,
+      finalAmount: finalAmt,
+      goldenDayMultiplier: mult,
+      estimatedPoints: estPts,
+    );
+  }
+
+  /// Kiểm tra khung giờ đã qua so với giờ hiện tại (khi chọn ngày hôm nay)
+  bool isSlotPast(TimeSlotModel slot, [DateTime? referenceTime]) {
+    final now = referenceTime ?? DateTime.now();
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    if (selectedDate != todayStr) return false;
+    final parts = slot.startTime.split(':');
+    if (parts.length < 2) return false;
+    final slotHour = int.tryParse(parts[0]) ?? 0;
+    final slotMin = int.tryParse(parts[1]) ?? 0;
+    final slotDateTime = DateTime(now.year, now.month, now.day, slotHour, slotMin);
+    return slotDateTime.isBefore(now);
+  }
+
+  /// Kiểm tra xem đã áp dụng mã khuyến mãi hay chưa
+  bool get hasPromoApplied => appliedPromo != null;
+
+  /// Kiểm tra có ít nhất 1 khung giờ hợp lệ được chọn
+  bool get hasValidSelection => selectedSlots.isNotEmpty;
+
+  /// Tổng số giờ đá đã chọn (dựa trên startTime & endTime của từng slot)
+  double get totalSelectedHours {
+    double total = 0.0;
+    for (var slot in selectedSlots) {
+      final s = _parseTimeToDouble(slot.startTime);
+      final e = _parseTimeToDouble(slot.endTime);
+      if (e > s) {
+        total += (e - s);
+      } else {
+        total += 1.0; // Mặc định 1 giờ nếu dữ liệu khung giờ không chuẩn
+      }
+    }
+    return total;
+  }
+
+  static double _parseTimeToDouble(String time) {
+    final parts = time.split(':');
+    if (parts.length < 2) return 0.0;
+    final h = double.tryParse(parts[0]) ?? 0.0;
+    final m = double.tryParse(parts[1]) ?? 0.0;
+    return h + (m / 60.0);
   }
 
   BookingProcessState copyWith({
@@ -188,6 +274,7 @@ class BookingProcessViewModel extends StateNotifier<BookingProcessState> {
 
   void toggleSlot(TimeSlotModel slot) {
     if (state.bookedSlotIds.contains(slot.id)) return;
+    if (state.isSlotPast(slot)) return;
 
     final current = List<TimeSlotModel>.from(state.selectedSlots);
     final exists = current.any((s) => s.id == slot.id);
@@ -195,8 +282,27 @@ class BookingProcessViewModel extends StateNotifier<BookingProcessState> {
       current.removeWhere((s) => s.id == slot.id);
     } else {
       current.add(slot);
+      // Sắp xếp các slot đã chọn theo thứ tự giờ bắt đầu tăng dần
+      current.sort((a, b) => a.startTime.compareTo(b.startTime));
     }
     state = state.copyWith(selectedSlots: current);
+  }
+
+  /// Chọn tất cả các slot còn trống trong ngày
+  void selectAllAvailableSlots() {
+    final available = state.allSlots.where((s) => !state.bookedSlotIds.contains(s.id)).toList();
+    available.sort((a, b) => a.startTime.compareTo(b.startTime));
+    state = state.copyWith(selectedSlots: available);
+  }
+
+  /// Bỏ chọn tất cả slot
+  void clearSelectedSlots() {
+    state = state.copyWith(selectedSlots: []);
+  }
+
+  /// Kiểm tra xem slot có thể chọn hay không (không bị trùng lịch)
+  bool isSlotSelectable(TimeSlotModel slot) {
+    return !state.bookedSlotIds.contains(slot.id);
   }
 
   Future<void> applyPromo(String code) async {
@@ -230,6 +336,10 @@ class BookingProcessViewModel extends StateNotifier<BookingProcessState> {
       appliedPromo: promo,
       clearPromoError: true,
     );
+  }
+
+  void removePromo() {
+    state = state.copyWith(clearPromo: true, clearPromoError: true);
   }
 
   void setNote(String note) {

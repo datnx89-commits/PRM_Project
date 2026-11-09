@@ -98,6 +98,58 @@ class BookingModel {
       paymentMethod == 'Cash' &&
       (paymentStatus == 'Pending' || paymentStatus == null || payment?.status == 'Pending');
 
+  /// Mã vé định dạng chuẩn hiển thị cho khách hàng (VD: TICKET-A1B2C3D4)
+  String get ticketCode {
+    final cleanId = id.replaceAll('-', '');
+    final short = cleanId.length >= 8 ? cleanId.substring(0, 8) : cleanId.padRight(8, '0');
+    return 'TICKET-${short.toUpperCase()}';
+  }
+
+  /// Thời điểm bắt đầu trận đấu dạng DateTime
+  DateTime? get startDateTime {
+    final bDate = effectiveBookingDate;
+    if (bDate.isEmpty) return null;
+    final sTime = startTime ?? (slotTimeText.contains('-') ? slotTimeText.split('-')[0].trim() : '');
+    if (sTime.isEmpty) return null;
+    final parts = sTime.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]) ?? 0;
+    final minute = int.tryParse(parts[1]) ?? 0;
+    final dateParts = bDate.split('-');
+    if (dateParts.length < 3) return null;
+    final y = int.tryParse(dateParts[0]) ?? 0;
+    final m = int.tryParse(dateParts[1]) ?? 0;
+    final d = int.tryParse(dateParts[2]) ?? 0;
+    return DateTime(y, m, d, hour, minute);
+  }
+
+  /// Thời điểm kết thúc trận đấu dạng DateTime
+  DateTime? get endDateTime {
+    final bDate = effectiveBookingDate;
+    if (bDate.isEmpty) return null;
+    final eTime = endTime ?? (slotTimeText.contains('-') ? slotTimeText.split('-')[1].trim() : '');
+    if (eTime.isEmpty) return null;
+    final parts = eTime.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]) ?? 0;
+    final minute = int.tryParse(parts[1]) ?? 0;
+    final dateParts = bDate.split('-');
+    if (dateParts.length < 3) return null;
+    final y = int.tryParse(dateParts[0]) ?? 0;
+    final m = int.tryParse(dateParts[1]) ?? 0;
+    final d = int.tryParse(dateParts[2]) ?? 0;
+    return DateTime(y, m, d, hour, minute);
+  }
+
+  /// Kiểm tra đơn đặt có đủ điều kiện hủy theo chính sách (mặc định trước 2 giờ)
+  bool isCancellableWithPolicy({int minHoursBefore = 2, DateTime? now}) {
+    if (status == 'Cancelled' || status == 'Completed') return false;
+    final sTime = startDateTime;
+    if (sTime == null) return false;
+    final current = now ?? DateTime.now();
+    return sTime.difference(current).inMinutes >= minHoursBefore * 60;
+  }
+
   BookingModel copyWith({
     String? id,
     String? userId,

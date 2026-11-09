@@ -131,11 +131,13 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                     runSpacing: 8,
                     children: state.allSlots.map((slot) {
                       final isBooked = state.bookedSlotIds.contains(slot.id);
+                      final isPast = state.isSlotPast(slot);
+                      final isDisabled = isBooked || isPast;
                       final isSelected = state.selectedSlots.any((s) => s.id == slot.id);
                       final slotPrice = state.getSlotPrice(widget.field, slot);
 
                       Color? bg;
-                      if (isBooked) {
+                      if (isDisabled) {
                         bg = Colors.grey.shade300;
                       } else if (isSelected) {
                         bg = Colors.blue.shade100;
@@ -149,15 +151,19 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                               '${slot.startTime} - ${slot.endTime}',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: isBooked ? Colors.grey : (isSelected ? Colors.blue.shade900 : Colors.black),
-                                decoration: isBooked ? TextDecoration.lineThrough : null,
+                                color: isDisabled ? Colors.grey : (isSelected ? Colors.blue.shade900 : Colors.black),
+                                decoration: isDisabled ? TextDecoration.lineThrough : null,
                               ),
                             ),
                             Text(
-                              Formatters.currency(slotPrice),
+                              isPast
+                                  ? 'Đã qua giờ'
+                                  : isBooked
+                                      ? 'Đã có người đặt'
+                                      : Formatters.currency(slotPrice),
                               style: TextStyle(
                                 fontSize: 11,
-                                color: isBooked ? Colors.grey : (isSelected ? Colors.blue.shade900 : Colors.grey.shade700),
+                                color: isDisabled ? Colors.grey : (isSelected ? Colors.blue.shade900 : Colors.grey.shade700),
                               ),
                             ),
                           ],
@@ -165,7 +171,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         selected: isSelected,
                         selectedColor: Colors.blue.shade100,
                         backgroundColor: bg,
-                        onSelected: isBooked ? null : (_) => vm.toggleSlot(slot),
+                        onSelected: isDisabled ? null : (_) => vm.toggleSlot(slot),
                       );
                     }).toList(),
                   ),
