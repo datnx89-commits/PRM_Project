@@ -27,6 +27,7 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
     final fieldRepo = ref.read(fieldRepositoryProvider);
     final slotRepo = ref.read(timeSlotRepositoryProvider);
     final pricingRepo = ref.read(pricingRepositoryProvider);
+    final bookingRepo = ref.read(bookingRepositoryProvider);
 
     // Lấy danh sách sân
     final ownerId = (user.role == UserRole.admin || user.role == UserRole.superAdmin) ? null : user.id;
@@ -69,8 +70,11 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
             hasLoadedSlots = true;
             setModalState(() => isLoadingSlots = true);
             try {
+              final dateStr =
+                  '${selectedDate.year.toString().padLeft(4, '0')}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+              final bookedSlotIds = await bookingRepo.getBookedSlotIds(selectedField.id, dateStr);
               final slots = await slotRepo.getTimeSlots(fieldId: selectedField.id);
-              availableSlots = slots.where((s) => s.isActive).toList();
+              availableSlots = slots.where((s) => s.isActive && !bookedSlotIds.contains(s.id)).toList();
               selectedSlot = availableSlots.isNotEmpty ? availableSlots.first : null;
               calculatedPrice = 0;
               if (selectedSlot != null) {
@@ -146,7 +150,10 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
                               lastDate: DateTime.now().add(const Duration(days: 30)),
                             );
                             if (picked != null) {
-                              setModalState(() => selectedDate = picked);
+                              setModalState(() {
+                                selectedDate = picked;
+                                hasLoadedSlots = false;
+                              });
                               loadSlots();
                             }
                           },
@@ -158,7 +165,7 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
                   if (isLoadingSlots)
                     const Center(child: CircularProgressIndicator())
                   else if (availableSlots.isEmpty)
-                    const Text('Sân này chưa có khung giờ hoạt động nào.', style: TextStyle(color: Colors.red))
+                    const Text('Không có khung giờ trống nào trong ngày này.', style: TextStyle(color: Colors.red))
                   else
                     DropdownButtonFormField<TimeSlotModel>(
                       initialValue: selectedSlot,
@@ -258,6 +265,7 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
 
                         Navigator.pop(ctx);
 
+                        final messenger = ScaffoldMessenger.of(context);
                         final vm = ref.read(staffBookingsViewModelProvider.notifier);
                         final (ok, msg) = await vm.createWalkInBooking(
                           fieldId: selectedField.id,
@@ -270,14 +278,12 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
                           note: noteCtrl.text.trim(),
                         );
 
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(msg),
-                              backgroundColor: ok ? Colors.green : Colors.red,
-                            ),
-                          );
-                        }
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(msg),
+                            backgroundColor: ok ? Colors.green : Colors.red,
+                          ),
+                        );
                       },
                       child: const Text('Xác nhận tạo đơn đặt hộ', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
