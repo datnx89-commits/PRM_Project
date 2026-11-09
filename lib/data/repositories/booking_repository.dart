@@ -443,11 +443,12 @@ class BookingRepository {
 
     // 4. Xử lý hoàn tiền nếu booking đã thanh toán
     String refundText = '';
+    bool toWallet = false;
     if (booking.isPaid && booking.totalAmount > 0) {
       // Kiểm tra sân có nhận ví không
       final fieldDoc = await _firebaseService.fieldsCollection.doc(booking.fieldId).get();
       final acceptWallet = fieldDoc.exists ? (fieldDoc.data()?['acceptWalletPayment'] as bool? ?? false) : false;
-      final toWallet = booking.paymentMethod == PaymentMethod.wallet || acceptWallet;
+      toWallet = booking.paymentMethod == PaymentMethod.wallet || acceptWallet;
 
       if (toWallet) {
         await _walletRepo.refund(
@@ -456,7 +457,9 @@ class BookingRepository {
           bookingId: booking.id,
           description: 'Hoàn tiền hủy booking #${booking.id}',
         );
-        refundText = ' Số tiền ${booking.totalAmount.toInt()}đ đã được hoàn ngay vào ví của bạn.';
+        refundText = isStaff
+            ? ' Số tiền ${booking.totalAmount.toInt()}đ đã được hoàn trả lại vào ví của khách hàng.'
+            : ' Số tiền ${booking.totalAmount.toInt()}đ đã được hoàn ngay vào ví của bạn.';
       } else {
         // Tạo yêu cầu chuyển khoản STK ngân hàng
         final userDoc = await _firebaseService.usersCollection.doc(booking.userId).get();
@@ -480,19 +483,33 @@ class BookingRepository {
           createdAt: DateTime.now(),
         );
         await refundRef.set(refundReq.toMap());
-        refundText = ' Yêu cầu hoàn ${booking.totalAmount.toInt()}đ về tài khoản ngân hàng đang được xử lý.';
+        refundText = isStaff
+            ? ' Đã tạo yêu cầu chuyển khoản hoàn ${booking.totalAmount.toInt()}đ về tài khoản ngân hàng của khách.'
+            : ' Yêu cầu hoàn ${booking.totalAmount.toInt()}đ về tài khoản ngân hàng đang được xử lý.';
       }
     }
 
     // 5. Gửi thông báo
-    if (isStaff && booking.userId != userId) {
+    if (booking.isPaid && toWallet) {
+      // Thông báo rõ ràng về việc hoàn tiền vào ví cho khách hàng
+      await _notifRepo.sendNotification(
+        userId: booking.userId,
+        title: 'Hoàn tiền đặt sân vào ví',
+        message: isStaff
+            ? 'Đơn đặt sân ${booking.effectiveFieldName} ngày ${booking.effectiveBookingDate} (${booking.slotTimeText}) đã được chủ sân hủy. Số tiền ${booking.totalAmount.toInt()}đ đã được hoàn trả vào Ví SportsBook của bạn.'
+            : 'Bạn đã hủy đơn sân ${booking.effectiveFieldName}. Số tiền ${booking.totalAmount.toInt()}đ đã được hoàn vào Ví SportsBook của bạn.',
+        url: '/wallet',
+      );
+    } else if (isStaff) {
       await _notifRepo.sendNotification(
         userId: booking.userId,
         title: 'Booking bị hủy',
         message: 'Booking sân ${booking.effectiveFieldName} ngày ${booking.effectiveBookingDate} (${booking.slotTimeText}) đã bị chủ sân hủy.$refundText',
         url: '/my-bookings',
       );
-    } else if (!isStaff && booking.ownerId != null && booking.ownerId!.isNotEmpty) {
+    }
+
+    if (!isStaff && booking.ownerId != null && booking.ownerId!.isNotEmpty) {
       await _notifRepo.sendNotification(
         userId: booking.ownerId!,
         title: 'Khách hủy booking',

@@ -58,45 +58,60 @@ class _RefundManagementScreenState
 
   Future<void> _confirmTransfer(RefundRequestModel req) async {
     final noteController = TextEditingController();
+    bool creditToWallet = true;
+
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận đã chuyển khoản'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Booking: #${req.bookingId.length > 8 ? req.bookingId.substring(0, 8) : req.bookingId}'),
-            const SizedBox(height: 4),
-            Text(
-              'Số tiền: ${_currencyFormat.format(req.amount)}',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => AlertDialog(
+          title: const Text('Xác nhận đã chuyển khoản'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Booking: #${req.bookingId.length > 8 ? req.bookingId.substring(0, 8) : req.bookingId}'),
+                const SizedBox(height: 4),
+                Text(
+                  'Số tiền: ${_currencyFormat.format(req.amount)}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                ),
+                const SizedBox(height: 8),
+                Text('Ngân hàng: ${_orMissing(req.bankName)}'),
+                Text('Số TK: ${_orMissing(req.bankAccountNumber)}'),
+                Text('Chủ TK: ${_orMissing(req.bankAccountHolder)}'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: noteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Mã giao dịch / Ghi chú (tùy chọn)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: creditToWallet,
+                  activeColor: Colors.teal,
+                  title: const Text('Cộng tiền vào Ví SportsBook của khách', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Cộng số dư ví để khách kiểm tra ngay ở Dashboard / Ví', style: TextStyle(fontSize: 11)),
+                  onChanged: (v) => setModalState(() => creditToWallet = v ?? true),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text('Ngân hàng: ${_orMissing(req.bankName)}'),
-            Text('Số TK: ${_orMissing(req.bankAccountNumber)}'),
-            Text('Chủ TK: ${_orMissing(req.bankAccountHolder)}'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: noteController,
-              decoration: const InputDecoration(
-                labelText: 'Mã giao dịch / Ghi chú (tùy chọn)',
-                border: OutlineInputBorder(),
-              ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              child: const Text('Xác nhận đã chuyển'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-            child: const Text('Xác nhận đã chuyển'),
-          ),
-        ],
       ),
     );
 
@@ -108,6 +123,7 @@ class _RefundManagementScreenState
           refundRequestId: req.id,
           processedById: user?.id ?? 'admin',
           note: noteController.text.trim(),
+          creditToWallet: creditToWallet,
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

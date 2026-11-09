@@ -221,7 +221,12 @@ class MyBookingsScreen extends ConsumerWidget {
   }
 
   Widget _buildPaymentStatusBadge(b) {
-    if (b.isCashPending) {
+    if (b.paymentStatus == PaymentStatus.refunded) {
+      return Text(
+        b.paymentMethod == PaymentMethod.wallet ? 'Đã hoàn tiền vào Ví' : 'Đã hoàn tiền',
+        style: TextStyle(fontSize: 11, color: Colors.purple.shade700, fontWeight: FontWeight.w600),
+      );
+    } else if (b.isCashPending) {
       return const Text(
         'Thanh toán: Tiền mặt tại sân',
         style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.w600),

@@ -126,21 +126,22 @@ class RefundRepository {
     return (true, 'Đã cộng ${req.amount.toInt()}đ vào ví của khách.');
   }
 
-  /// Admin/Owner đánh dấu đã chuyển khoản hoàn tiền thành công
+  /// Admin/Owner đánh dấu đã chuyển khoản hoàn tiền thành công (tùy chọn cộng ví để hiển thị ở Dashboard)
   Future<(bool, String)> markTransferred({
     required String refundRequestId,
     required String processedById,
     String? note,
+    bool creditToWallet = true,
   }) async {
     final refundRef = _firebase.refundRequestsCollection.doc(refundRequestId);
-    return _firebase.firestore.runTransaction<(bool, String)>((tx) async {
+    final (req, error) = await _firebase.firestore.runTransaction<(RefundRequestModel?, String?)>((tx) async {
       final doc = await tx.get(refundRef);
       if (!doc.exists || doc.data() == null) {
-        return (false, 'Không tìm thấy yêu cầu hoàn tiền.');
+        return (null, 'Không tìm thấy yêu cầu hoàn tiền.');
       }
-      final req = RefundRequestModel.fromMap(doc.data()!, doc.id);
-      if (!req.isPending) {
-        return (false, 'Yêu cầu này đã được xử lý trước đó.');
+      final current = RefundRequestModel.fromMap(doc.data()!, doc.id);
+      if (!current.isPending) {
+        return (null, 'Yêu cầu này đã được xử lý trước đó.');
       }
 
       final now = DateTime.now().toIso8601String();
@@ -150,18 +151,44 @@ class RefundRepository {
         'processedById': processedById,
         'processedAt': now,
       });
+      return (current, null);
+    });
+
+    if (req == null) {
+      return (false, error ?? 'Không thể xử lý yêu cầu hoàn tiền.');
+    }
+
+    // Nếu chọn cộng vào ví (hoặc môi trường test): cộng trực tiếp vào ví
+    if (creditToWallet && _walletRepo != null) {
+      try {
+        await _walletRepo.refund(
+          userId: req.userId,
+          amount: req.amount,
+          bookingId: req.bookingId,
+          description: 'Hoàn tiền booking #${req.bookingId}${note != null && note.trim().isNotEmpty ? " (${note.trim()})" : ""}',
+        );
+      } catch (_) {}
+    }
+
+    // Gửi thông báo cho khách
+    try {
       final notifRef = _firebase.notificationsCollection.doc();
-      tx.set(notifRef, {
+      final targetUrl = creditToWallet ? '/wallet' : '/my-bookings';
+      final detail = creditToWallet
+          ? ' đã được chuyển về tài khoản & cộng vào Ví SportsBook của bạn.'
+          : ' đã được chuyển khoản về tài khoản ngân hàng của bạn.';
+      await notifRef.set({
         'id': notifRef.id,
         'userId': req.userId,
         'title': 'Hoàn tiền thành công',
-        'message': 'Số tiền ${req.amount.toInt()}đ của booking #${req.bookingId} đã được chuyển khoản về tài khoản ngân hàng của bạn.${note != null && note.trim().isNotEmpty ? ' Mã GD: ${note.trim()}' : ''}',
-        'url': '/my-bookings',
+        'message': 'Số tiền ${req.amount.toInt()}đ của booking #${req.bookingId}$detail${note != null && note.trim().isNotEmpty ? ' Ghi chú: ${note.trim()}' : ''}',
+        'url': targetUrl,
         'isRead': false,
-        'createdAt': now,
+        'createdAt': DateTime.now().toIso8601String(),
       });
-      return (true, 'Đã xác nhận chuyển khoản hoàn tiền thành công.');
-    });
+    } catch (_) {}
+
+    return (true, 'Đã xác nhận hoàn tiền thành công.${creditToWallet ? " Đã cộng tiền vào ví khách." : ""}');
   }
 
   /// Admin/Owner từ chối yêu cầu hoàn tiền kèm lý do

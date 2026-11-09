@@ -549,6 +549,30 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
                                             style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
                                             onPressed: () async {
                                               final messenger = ScaffoldMessenger.of(context);
+                                              final confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (ctx) => AlertDialog(
+                                                  title: const Text('Xác nhận hủy đơn'),
+                                                  content: Text(
+                                                    b.paymentMethod == PaymentMethod.wallet && b.isPaid
+                                                        ? 'Bạn có chắc chắn muốn hủy đơn này? Số tiền đã thanh toán sẽ được hoàn trả tự động vào ví của khách hàng.'
+                                                        : 'Bạn có chắc chắn muốn hủy đơn đặt sân này không?',
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(ctx, false),
+                                                      child: const Text('Đóng'),
+                                                    ),
+                                                    ElevatedButton(
+                                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                                      onPressed: () => Navigator.pop(ctx, true),
+                                                      child: const Text('Hủy đơn', style: TextStyle(color: Colors.white)),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                              if (confirm != true) return;
+
                                               final (ok, msg) = await vm.cancelBooking(b.id);
                                               messenger.showSnackBar(SnackBar(content: Text(msg)));
                                             },
@@ -571,7 +595,19 @@ class _StaffBookingsScreenState extends ConsumerState<StaffBookingsScreen> {
   }
 
   Widget _buildPaymentBadge(b) {
-    if (b.isCashPending) {
+    if (b.paymentStatus == PaymentStatus.refunded) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.purple.shade100,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          b.paymentMethod == PaymentMethod.wallet ? 'Đã hoàn tiền vào ví khách' : 'Đã hoàn tiền',
+          style: TextStyle(fontSize: 11, color: Colors.purple.shade900, fontWeight: FontWeight.bold),
+        ),
+      );
+    } else if (b.isCashPending) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(

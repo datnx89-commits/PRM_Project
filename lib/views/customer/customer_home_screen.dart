@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/formatters.dart';
+import '../../data/providers.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/field_list_viewmodel.dart';
 import '../shared/app_drawer.dart';
 import 'field_detail_screen.dart';
+import 'wallet_screen.dart';
 
 class CustomerHomeScreen extends ConsumerStatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -26,6 +29,7 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(fieldListViewModelProvider);
     final vm = ref.read(fieldListViewModelProvider.notifier);
+    final user = ref.watch(authViewModelProvider).user;
 
     return Scaffold(
       appBar: AppBar(
@@ -34,6 +38,91 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
       drawer: const AppDrawer(),
       body: Column(
         children: [
+          // Thẻ ví & Điểm thưởng Realtime trên Dashboard cho khách hàng đã đăng nhập
+          if (user != null)
+            StreamBuilder(
+              stream: ref
+                  .read(firebaseServiceProvider)
+                  .usersCollection
+                  .doc(user.id)
+                  .snapshots(),
+              builder: (context, snap) {
+                final data = snap.data?.data();
+                final balance = (data?['walletBalance'] as num?)?.toDouble() ?? user.walletBalance;
+                final points = (data?['points'] as num?)?.toInt() ?? user.points;
+                final tier = (data?['tier'] as String?) ?? user.tier;
+
+                return Container(
+                  margin: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.teal.shade800, Colors.teal.shade600],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.teal.shade900.withValues(alpha: 0.18),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.account_balance_wallet, color: Colors.amberAccent, size: 18),
+                              SizedBox(width: 6),
+                              Text(
+                                'Số dư ví SportsBook:',
+                                style: TextStyle(color: Colors.white70, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            Formatters.currency(balance),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Hạng: $tier • $points điểm thưởng',
+                            style: TextStyle(color: Colors.amber.shade200, fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.arrow_forward, size: 16),
+                        label: const Text('Xem ví'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.teal.shade900,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const WalletScreen()),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Column(
